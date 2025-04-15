@@ -1,0 +1,23 @@
+# Ignore virtual environments
+.venv/
+env/
+
+# Ignore macOS system files
+*.DS_Store
+
+# Ignore PyCharm project files
+.idea/
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+.python-version
+
+# directories to ignore:
+data/raw/
+data/processed/
+
+# files to ignore
