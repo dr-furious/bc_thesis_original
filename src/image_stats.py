@@ -1,33 +1,28 @@
-import os
 from typing import List, Tuple
-
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
+from src.utils import load_images
+
 
 class ImageStats:
-    images_dir: str
-    images: List[np.ndarray]
+    images_dir: str | None
+    images: List[Tuple[np.ndarray, str]]
 
-    def __init__(self, images_dir, supported_formats: Tuple[str] = (".jpg", ".jpeg", ".png")):
+    def __init__(self, images_dir: str, supported_formats: Tuple[str] = (".jpg", ".jpeg", ".png"),
+                 images: List[np.ndarray] = None) -> None:
+        if images is not None:
+            self.images_dir = None
+            self.images = [(img, "") for img in images]
+            return
         self.images_dir = images_dir
-        self.images = []
-        images = [f for f in os.listdir(images_dir) if f.endswith(supported_formats)]
-
-        for image_file in images:
-            img_path = os.path.join(images_dir, image_file)
-            try:
-                img = cv2.imread(img_path)
-                self.images.append(img)
-            except FileNotFoundError and FileExistsError as e:
-                print(f"Error opening image: {img_path}\nError: {e}")
-                continue
+        self.images = load_images(images_dir, supported_formats)
 
     def get_image_stats(self, visual: bool = False) -> dict:
         sizes = []
         for image in self.images:
-            sizes.append(image.shape[:2])
+            sizes.append(image[0].shape[:2])
 
         image_sizes_np = np.array(sizes)
         count = len(image_sizes_np)
@@ -68,7 +63,7 @@ class ImageStats:
         return stats
 
     def contrast_std(self) -> np.floating:
-        std_devs = [np.std(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)) for img in self.images]
+        std_devs = [np.std(cv2.cvtColor(img[0], cv2.COLOR_BGR2GRAY)) for img in self.images]
         mean_dev = np.mean(std_devs)
         print(f"Contrast standard deviations: {mean_dev}")
         return mean_dev
@@ -76,7 +71,7 @@ class ImageStats:
     def michelson_contrast(self) -> np.floating:
         michelson_contrasts = []
         for img in self.images:
-            img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.int16)
+            img_gray = cv2.cvtColor(img[0], cv2.COLOR_BGR2GRAY).astype(np.int16)
             img_max = np.max(img_gray)
             img_min = np.min(img_gray)
             if img_max + img_min != 0:  # Avoid division by zero
