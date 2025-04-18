@@ -91,23 +91,31 @@ class MaskGenerator:
             })
         return cut_results
 
-    def generate_masks(self, image_data: List[Dict[str, Union[str, List[dict]]]], operations: List[Callable]) -> None:
+    def generate_masks(self, image_data: List[Dict[str, Union[str, List[dict]]]], operations: List[Callable]) \
+            -> List[Dict[str, Union[str, List[dict]]]]:
+        if operations is None:
+            return image_data
         for operation in operations:
             image_data = operation(image_data)
+        return image_data
 
-    def otsu_thresholding(self, image_data: List[Dict[str, Union[str, List[dict]]]]):
+    def otsu_thresholding(self, image_data: List[Dict[str, Union[str, List[dict]]]]) \
+            -> List[Dict[str, Union[str, List[dict]]]]:
         # your code here
         return image_data
 
-    def open_close(self, image_data: List[Dict[str, Union[str, List[dict]]]]):
+    def open_close(self, image_data: List[Dict[str, Union[str, List[dict]]]]) \
+            -> List[Dict[str, Union[str, List[dict]]]]:
         # your code here
         return image_data
 
-    def hist_equalize(self, image_data: List[Dict[str, Union[str, List[dict]]]]):
+    def hist_equalize(self, image_data: List[Dict[str, Union[str, List[dict]]]]) \
+            -> List[Dict[str, Union[str, List[dict]]]]:
         # your code here
         return image_data
 
-    def combine_masks(self, image_data: List[Dict[str, Union[str, List[dict]]]]) -> List[Tuple[np.ndarray, str]]:
+    def combine_masks(self, image_data: List[Dict[str, Union[str, List[dict]]]], out_dir: str) \
+            -> List[Tuple[np.ndarray, str]]:
         i = 20
         for record in image_data:
             image_name, roi_cuts = record['image_name'], record['roi_cuts']
@@ -134,6 +142,7 @@ class MaskGenerator:
                 buffer_image[y:y+h, x:x+w] = roi
                 whole_image = cv2.bitwise_or(whole_image, buffer_image)
 
+            # For the purpose of visualization
             whole_image[whole_image == 1] = 255
             plt.title(image_name)
             plt.imshow(whole_image, cmap='gray')
@@ -142,6 +151,12 @@ class MaskGenerator:
             if i < 1:
                 return
 
-    def run(self, json_path: str, operations: List[Callable], out_dir: str, save_steps: bool = False) -> None:
-        pass
+    def run(self, json_path: str, out_dir: str = None, operations: List[Callable] = None, save_steps: bool = False) -> None:
+        # Cutting
+        cut_results = self.cut_cells(json_path)
 
+        # Applying CV operations
+        cv_results = self.generate_masks(cut_results, operations)
+
+        # Combining masks
+        self.combine_masks(cv_results, out_dir=out_dir)
