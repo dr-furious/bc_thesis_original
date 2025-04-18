@@ -1,7 +1,7 @@
 import json
 import os
 import numpy as np
-from typing import List, Tuple, Dict, Union
+from typing import List, Tuple, Dict, Union, Callable
 from PIL import Image
 
 from src.utils import load_images, load_json
@@ -67,11 +67,24 @@ class MaskGenerator:
             })
         return cut_results
 
-    def generate_masks(self) -> None:
+    def generate_masks(self, image_data: List[Dict[str, Union[str, dict]]], operations: List[Callable]) -> None:
+        for operation in operations:
+            image_data = operation(image_data)
+
+    def otsu_thresholding(self, image_data: List[Dict[str, Union[str, dict]]]):
+        # your code here
+        return image_data
+
+    def open_close(self, image_data: List[Dict[str, Union[str, dict]]]):
+        # your code here
+        return image_data
+
+    def hist_equalize(self, image_data: List[Dict[str, Union[str, dict]]]):
+        # your code here
+        return image_data
+
+    def combine_masks(self, image_data: List[Dict[str, Union[str, dict]]], out_dir: str) -> None:
         pass
 
-    def combine_masks(self) -> None:
-        pass
-
-    def generate(self) -> None:
+    def run(self, json_path: str, operations: List[Callable], out_dir: str, save_steps: bool = False) -> None:
         pass
