@@ -1,11 +1,12 @@
 import os
+
 import cv2
 import numpy as np
 from typing import List, Tuple, Dict, Union, Callable
 from PIL import Image
 from matplotlib import pyplot as plt
 
-from src.utils import load_images, load_json
+from src.utils import load_json
 
 
 # Mask Generating Workflow:
@@ -69,13 +70,13 @@ class MaskGenerator:
     def _cut_cells(self, json_path: str, out_dir: str | None = None) \
             -> List[Dict[str, Union[str, List[dict]]]]:
         data = load_json(json_path)
-        images = data['images']
+        images = data["images"]
         cut_results = []
         for image in images:
-            image_id = image['id']
-            image_name = image['file_name']
+            image_id = image["id"]
+            image_name = image["file_name"]
             image_path = os.path.join(self.images_dir, image_name)
-            rois = [ann['bbox'] for ann in data['annotations'] if ann['image_id'] == image_id]
+            rois = [ann["bbox"] for ann in data["annotations"] if ann["image_id"] == image_id]
             roi_images = _cut(image_path=image_path, regions=rois, out_dir=out_dir)
 
             # Save all cut rois per single image
@@ -95,22 +96,29 @@ class MaskGenerator:
 
         return self.image_data
 
-    def _otsu_thresholding(self, save: bool) -> List[Dict[str, Union[str, List[dict]]]]:
-        # your code here
-        return self.image_data
+    def _apply_operation_to_roi(self, operation: Callable, out_dir: str | None = None) -> None:
+        for record in self.image_data:
+            for cut in record["roi_cuts"]:
+                roi = np.array(cut["image"], dtype=np.uint8)
+                roi = operation(roi)
+                cut["image"] = roi
 
-    def _open_close(self, save: bool) -> List[Dict[str, Union[str, List[dict]]]]:
-        # your code here
-        return self.image_data
+    def _otsu_thresholding(self, save: bool) -> None:
+        def do(roi: np.ndarray) -> np.ndarray:
+            img_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            # Use Otsu's thresholding
+            _, thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            return thresh
+        self._apply_operation_to_roi(do, "otsu_threshold" if save else None)
 
-    def _hist_equalize(self, save: bool) -> List[Dict[str, Union[str, List[dict]]]]:
+    def _open_close(self, save: bool) -> None:
         # your code here
-        return self.image_data
+        pass
 
     def _combine_masks(self, out_dir: str) -> List[Tuple[np.ndarray, str]]:
         i = 20
         for record in self.image_data:
-            image_name, roi_cuts = record['image_name'], record['roi_cuts']
+            image_name, roi_cuts = record["image_name"], record["roi_cuts"]
             image_path = os.path.join(self.images_dir, image_name)
 
             print(f"ROIs: {len(roi_cuts)}")
@@ -122,7 +130,7 @@ class MaskGenerator:
 
             for cut in roi_cuts:
                 roi = np.array(cut["image"], dtype=np.uint8)
-                roi = np.ones(roi.shape[:2])
+                # roi = np.ones(roi.shape[:2])
                 print(f"ROI shape: {roi.shape}")
                 x, y, w, h, roi = _check_bbox(roi=roi,
                                               bbox=(cut["x"], cut["y"], cut["width"], cut["height"]),
@@ -137,7 +145,7 @@ class MaskGenerator:
             # For the purpose of visualization
             whole_image[whole_image == 1] = 255
             plt.title(image_name)
-            plt.imshow(whole_image, cmap='gray')
+            plt.imshow(whole_image, cmap="gray")
             plt.show()
             i = i-1
             if i < 1:
@@ -149,6 +157,7 @@ class MaskGenerator:
         self._cut_cells(json_path)
 
         # Applying CV operations
+        operations = [self._otsu_thresholding]
         self._generate_masks(operations=operations, save=save_steps)
 
         # Combining masks
