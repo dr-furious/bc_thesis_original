@@ -61,18 +61,12 @@ def _check_bbox(roi: np.ndarray, bbox: Tuple[int, int, int, int], image_shape: T
 
 class MaskGenerator:
     images_dir: str | None
-    images: List[Tuple[np.ndarray, str]]
+    image_data: List[Dict[str, Union[str, List[dict]]]]
 
-    def __init__(self, images_dir, supported_formats: Tuple[str] = (".jpg", ".jpeg", ".png"),
-                 images: List[np.ndarray] = None) -> None:
-        if images is not None:
-            self.images_dir = None
-            self.images = [(img, "") for img in images]
-            return
+    def __init__(self, images_dir) -> None:
         self.images_dir = images_dir
-        self.images = load_images(images_dir, supported_formats)
 
-    def cut_cells(self, json_path: str, out_dir: str | None = None) \
+    def _cut_cells(self, json_path: str, out_dir: str | None = None) \
             -> List[Dict[str, Union[str, List[dict]]]]:
         data = load_json(json_path)
         images = data['images']
@@ -89,35 +83,33 @@ class MaskGenerator:
                 "image_name": image_name,
                 "roi_cuts": roi_images
             })
-        return cut_results
+        self.image_data = cut_results
+        return self.image_data
 
-    def generate_masks(self, image_data: List[Dict[str, Union[str, List[dict]]]], operations: List[Callable]) \
+    def _generate_masks(self, operations: List[Callable], save: bool) \
             -> List[Dict[str, Union[str, List[dict]]]]:
         if operations is None:
-            return image_data
+            return self.image_data
         for operation in operations:
-            image_data = operation(image_data)
-        return image_data
+            operation(save)
 
-    def otsu_thresholding(self, image_data: List[Dict[str, Union[str, List[dict]]]]) \
-            -> List[Dict[str, Union[str, List[dict]]]]:
+        return self.image_data
+
+    def _otsu_thresholding(self, save: bool) -> List[Dict[str, Union[str, List[dict]]]]:
         # your code here
-        return image_data
+        return self.image_data
 
-    def open_close(self, image_data: List[Dict[str, Union[str, List[dict]]]]) \
-            -> List[Dict[str, Union[str, List[dict]]]]:
+    def _open_close(self, save: bool) -> List[Dict[str, Union[str, List[dict]]]]:
         # your code here
-        return image_data
+        return self.image_data
 
-    def hist_equalize(self, image_data: List[Dict[str, Union[str, List[dict]]]]) \
-            -> List[Dict[str, Union[str, List[dict]]]]:
+    def _hist_equalize(self, save: bool) -> List[Dict[str, Union[str, List[dict]]]]:
         # your code here
-        return image_data
+        return self.image_data
 
-    def combine_masks(self, image_data: List[Dict[str, Union[str, List[dict]]]], out_dir: str) \
-            -> List[Tuple[np.ndarray, str]]:
+    def _combine_masks(self, out_dir: str) -> List[Tuple[np.ndarray, str]]:
         i = 20
-        for record in image_data:
+        for record in self.image_data:
             image_name, roi_cuts = record['image_name'], record['roi_cuts']
             image_path = os.path.join(self.images_dir, image_name)
 
@@ -151,12 +143,13 @@ class MaskGenerator:
             if i < 1:
                 return
 
-    def run(self, json_path: str, out_dir: str = None, operations: List[Callable] = None, save_steps: bool = False) -> None:
+    def run(self, json_path: str, out_dir: str = None, operations: List[Callable] = None, save_steps: bool = False) \
+            -> None:
         # Cutting
-        cut_results = self.cut_cells(json_path)
+        self._cut_cells(json_path)
 
         # Applying CV operations
-        cv_results = self.generate_masks(cut_results, operations)
+        self._generate_masks(operations=operations, save=save_steps)
 
         # Combining masks
-        self.combine_masks(cv_results, out_dir=out_dir)
+        self._combine_masks(out_dir=out_dir)
