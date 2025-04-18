@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Tuple, List
 import cv2
 import numpy as np
@@ -19,3 +20,9 @@ def load_images(img_dir: str, supported_formats: Tuple[str] = (".jpg", ".jpeg", 
             print(f"Error opening image: {img_path}\nError: {e}")
             continue
     return images
+
+
+def load_json(json_path: str, mode='r') -> dict:
+    with open(json_path, mode) as json_file:
+        data = json.load(json_file)
+    return data
