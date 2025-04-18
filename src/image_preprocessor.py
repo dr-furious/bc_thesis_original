@@ -1,5 +1,6 @@
 import os
 import random
+from enum import Enum
 from typing import List, Tuple, Dict, Union
 
 import cv2
@@ -8,6 +9,12 @@ from torchvision import transforms
 import torchstain
 
 from src.utils import load_images
+
+
+class InplaceOption(Enum):
+    NORM = "norm"
+    HEMATOXYLIN = "hematoxylin"
+    EOSIN = "eosin"
 
 
 class ImageProcessor:
@@ -28,8 +35,35 @@ class ImageProcessor:
             print("The number of images to select is greater than the total number of images.")
         return random.sample(self.images, num)
 
-    def normalize(self, target_images: List[Tuple[np.ndarray, str]], inplace: bool = False, out_dir: str | None = None)\
+    def equalize_hist(self, inplace: bool = False, out_dir: str | None = None) \
             -> List[Dict[str, Union[str, np.ndarray]]]:
+
+        result = []
+        eq_images = []
+        for image in self.images:
+            img, name = image
+            img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            img_hsv[:, :, 2] = cv2.equalizeHist(img_hsv[:, :, 2])
+            equalized_img = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
+
+            if out_dir is not None:
+                cv2.imwrite(os.path.join(out_dir, name), equalized_img)
+
+            if inplace is True:
+                eq_images.append((equalized_img, name))
+
+            result.append({
+                "img_name": name,
+                "equalized_img": equalized_img
+            })
+        if inplace is True:
+            self.images = eq_images
+        return result
+
+    def normalize(self, target_images: List[Tuple[np.ndarray, str]],
+                  inplace: bool = False,
+                  inplace_option: InplaceOption = InplaceOption.NORM,
+                  out_dir: str | None = None) -> List[Dict[str, Union[str, np.ndarray]]]:
 
         normalized_dir = None
         hematoxylin_dir = None
@@ -64,9 +98,9 @@ class ImageProcessor:
             img = T(img)
             norm_img_tensor, hematoxylin, eosin = normalizer.normalize(I=img, stains=True)
 
-            norm_image = norm_img_tensor.cpu().numpy()
-            hematoxylin_img = hematoxylin.cpu().numpy()
-            eosin_img = eosin.cpu().numpy()
+            norm_image = (norm_img_tensor.cpu().numpy() * 255).astype(np.uint8)
+            hematoxylin_img = (hematoxylin.cpu().numpy() * 255).astype(np.uint8)
+            eosin_img = (eosin.cpu().numpy() * 255).astype(np.uint8)
 
             if out_dir is not None:
                 cv2.imwrite(os.path.join(normalized_dir, name), norm_image)
@@ -74,7 +108,12 @@ class ImageProcessor:
                 cv2.imwrite(os.path.join(eosin_dir, name), eosin_img)
 
             if inplace is True:
-                norm_images.append((norm_image, name))
+                if inplace_option == InplaceOption.NORM:
+                    norm_images.append((norm_image, name))
+                elif inplace_option == InplaceOption.HEMATOXYLIN:
+                    norm_images.append((hematoxylin_img, name))
+                elif inplace_option == InplaceOption.EOSIN:
+                    norm_images.append((eosin_img, name))
 
             result.append({
                 "img_name": name,
