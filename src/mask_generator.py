@@ -21,9 +21,13 @@ def _cut(image_path: str, regions: List[List[int]], out_dir: str | None = None) 
 
     for (x, y, width, height) in regions:
         # Crop each ROI from image
-        roi = image.crop((x, y, x + width, y+height))
+        roi_img = image.crop((x, y, x + width, y + height))
+        roi = np.array(roi_img)
+        # Re-order for Open CV BGR mode
+        roi = roi[:, :, ::-1]
         cut_roi_images.append({
-            "image": np.array(roi),
+            "image": roi,
+            "image_copy": np.array(roi),
             "x": x,
             "y": y,
             "width": width,
@@ -32,7 +36,7 @@ def _cut(image_path: str, regions: List[List[int]], out_dir: str | None = None) 
 
         # Store each ROI into desired directory
         if out_dir is not None:
-            roi.save(os.path.join(out_dir, f"{image_name}_-_{x}_{y}_{width}_{height}.png"))
+            roi_img.save(os.path.join(out_dir, f"{image_name}_-_{x}_{y}_{width}_{height}.png"))
 
     return cut_roi_images
 
@@ -40,7 +44,6 @@ def _cut(image_path: str, regions: List[List[int]], out_dir: str | None = None) 
 def _check_bbox(roi: np.ndarray, bbox: Tuple[int, int, int, int], image_shape: Tuple[int, int]) \
         -> Tuple[int, int, int, int, np.ndarray]:
     x, y, w, h = bbox
-    print(f"x, y, w, h: {x, y, w, h}")
     if x < 0:
         roi = roi[:, abs(x):]
         w = w + x
@@ -100,55 +103,93 @@ class MaskGenerator:
         for record in self.image_data:
             for cut in record["roi_cuts"]:
                 roi = np.array(cut["image"], dtype=np.uint8)
-                roi = operation(roi)
+                roi_copy = np.array(cut["image_copy"], dtype=np.uint8)
+                roi = operation(roi, roi_copy)
                 cut["image"] = roi
 
+    def _gaussian_blur(self, save: bool) -> None:
+        def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
+            return cv2.GaussianBlur(roi, (3, 3), 0)
+
+        self._apply_operation_to_roi(do, "gaussian_blur" if save else None)
+
     def _otsu_thresholding(self, save: bool) -> None:
-        def do(roi: np.ndarray) -> np.ndarray:
+        def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             img_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
             # Use Otsu's thresholding
-            _, thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            _, thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
             return thresh
+
         self._apply_operation_to_roi(do, "otsu_threshold" if save else None)
 
-    def _open_close(self, save: bool) -> None:
-        # your code here
-        pass
+    def _adaptive_thresholding(self, save: bool) -> None:
+        def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
+            img_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            return cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
-    def _combine_masks(self, out_dir: str) -> List[Tuple[np.ndarray, str]]:
-        i = 20
+        self._apply_operation_to_roi(do, "adaptive_threshold" if save else None)
+
+    def _morph_opening(self, save: bool) -> None:
+        def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+            return cv2.morphologyEx(roi, cv2.MORPH_OPEN, kernel)
+
+        self._apply_operation_to_roi(do, "morph_opening" if save else None)
+
+    def _morph_closing(self, save: bool) -> None:
+        def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+            return cv2.morphologyEx(roi, cv2.MORPH_CLOSE, kernel)
+
+        self._apply_operation_to_roi(do, "morph_closing" if save else None)
+
+    def _marked_watershed(self, save: bool) -> None:
+        def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
+            dist_transform = cv2.distanceTransform(roi, cv2.DIST_L2, 5)
+            _, sure_fg = cv2.threshold(dist_transform, 0.3 * dist_transform.max(), 255, 0)
+            sure_fg = np.uint8(sure_fg)
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+            sure_bg = cv2.dilate(sure_fg, kernel, iterations=3)
+            unknown = cv2.subtract(sure_bg, sure_fg)
+            _, markers = cv2.connectedComponents(sure_fg)
+            markers = markers + 1
+            markers[unknown == 255] = 0
+            markers = cv2.watershed(roi_copy, markers)
+            result_roi = np.zeros(roi.shape, dtype=np.uint8)
+            result_roi[markers > 1] = 255
+            return result_roi
+
+        self._apply_operation_to_roi(do, "marked_watershed" if save else None)
+
+    def _combine_masks(self, save: bool) -> List[Tuple[np.ndarray, str]]:
+        i = 50
         for record in self.image_data:
             image_name, roi_cuts = record["image_name"], record["roi_cuts"]
             image_path = os.path.join(self.images_dir, image_name)
+            original_image = cv2.imread(image_path)
 
             print(f"ROIs: {len(roi_cuts)}")
             print(f"Image name: {image_name}")
 
-            whole_image = np.zeros(cv2.imread(image_path).shape[:2])
+            whole_image = np.zeros(original_image.shape[:2])
 
             print(f"Whole image shape: {whole_image.shape}")
 
             for cut in roi_cuts:
                 roi = np.array(cut["image"], dtype=np.uint8)
                 # roi = np.ones(roi.shape[:2])
-                print(f"ROI shape: {roi.shape}")
                 x, y, w, h, roi = _check_bbox(roi=roi,
                                               bbox=(cut["x"], cut["y"], cut["width"], cut["height"]),
                                               image_shape=whole_image.shape)
-                print(f"ROI shape after: {roi.shape}")
                 buffer_image = np.zeros_like(whole_image)
-                print(f"Buffer image shape: {buffer_image.shape}")
-                print(f"x, y, w, h: {x, y, w, h}")
-                buffer_image[y:y+h, x:x+w] = roi
+                buffer_image[y:y + h, x:x + w] = roi
                 whole_image = cv2.bitwise_or(whole_image, buffer_image)
 
             # For the purpose of visualization
-            whole_image[whole_image == 1] = 255
-            plt.title(image_name)
-            plt.imshow(whole_image, cmap="gray")
-            plt.show()
-            i = i-1
+            record["roi_cuts"] = [{"image": whole_image, "image_copy": original_image}]
+            i = i - 1
             if i < 1:
+                print(self.image_data)
                 return
 
     def run(self, json_path: str, out_dir: str = None, operations: List[Callable] = None, save_steps: bool = False) \
@@ -157,8 +198,43 @@ class MaskGenerator:
         self._cut_cells(json_path)
 
         # Applying CV operations
-        operations = [self._otsu_thresholding]
-        self._generate_masks(operations=operations, save=save_steps)
+        operations_pipe = [self._gaussian_blur,
+                           self._adaptive_thresholding,
+                           self._combine_masks,
+                           self._morph_opening,
+                           self._morph_closing,
+                           self._marked_watershed]
 
-        # Combining masks
-        self._combine_masks(out_dir=out_dir)
+        self._generate_masks(operations=operations_pipe, save=save_steps)
+
+        # Visualize results, both original image, mask, and overlay
+        i = 50
+        for image in self.image_data:
+            plt.figure(figsize=(10, 10))
+
+            plt.subplot(131)
+            plt.imshow(cv2.cvtColor(image["roi_cuts"][0]["image_copy"], cv2.COLOR_BGR2RGB))
+            plt.title("Original Image")
+            plt.axis('off')
+
+            plt.subplot(132)
+            plt.imshow(image["roi_cuts"][0]["image"], cmap='gray')
+            plt.title("Mask")
+            plt.axis('off')
+
+            color_mask = cv2.cvtColor(image["roi_cuts"][0]["image"], cv2.COLOR_GRAY2BGR)
+            # Get green color for mask
+            color_mask[np.all(color_mask == [255, 255, 255], axis=-1)] = [15, 255, 0]
+            overlay = cv2.addWeighted(image["roi_cuts"][0]["image_copy"], 0.7,
+                                      color_mask, 0.3, 0)
+            plt.subplot(133)
+            plt.imshow(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
+            plt.title("Overlay")
+            plt.axis('off')
+
+            plt.show()
+
+            i = i-1
+            if i < 1:
+                return
+

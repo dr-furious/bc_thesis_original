@@ -98,9 +98,13 @@ class ImageProcessor:
             img = T(img)
             norm_img_tensor, hematoxylin, eosin = normalizer.normalize(I=img, stains=True)
 
-            norm_image = (norm_img_tensor.cpu().numpy() * 255).astype(np.uint8)
-            hematoxylin_img = (hematoxylin.cpu().numpy() * 255).astype(np.uint8)
-            eosin_img = (eosin.cpu().numpy() * 255).astype(np.uint8)
+            norm_image = np.clip(norm_img_tensor.cpu().numpy(), 0, 255).astype(np.uint8)
+            hematoxylin_img = np.clip(hematoxylin.cpu().numpy(), 0, 255).astype(np.uint8)
+            eosin_img = np.clip(eosin.cpu().numpy(), 0, 255).astype(np.uint8)
+
+            norm_image = cv2.cvtColor(norm_image, cv2.COLOR_RGB2BGR)
+            hematoxylin_img = cv2.cvtColor(hematoxylin_img, cv2.COLOR_RGB2BGR)
+            eosin_img = cv2.cvtColor(eosin_img, cv2.COLOR_RGB2BGR)
 
             if out_dir is not None:
                 cv2.imwrite(os.path.join(normalized_dir, name), norm_image)

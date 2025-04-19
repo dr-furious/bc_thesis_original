@@ -23,36 +23,6 @@ class Sample:
         except Exception as e:
             print(f"Error occurred while opening the mask: {e}")
 
-    def equalize_hist(self, inplace: bool = False) -> np.ndarray | None:
-        if self.img is None:
-            print("Image is None")
-            return
-        img_hsv = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
-        img_hsv[:, :, 2] = cv2.equalizeHist(img_hsv[:, :, 2])
-        equalized_img = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
-        if inplace is True:
-            self.img = equalized_img
-        return equalized_img
-
-    def otsu_thresholding(self, inplace: bool = False) -> np.ndarray | None:
-        if self.img is None:
-            print("Image is None")
-            return
-        img_gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-
-        # Use Otsu's thresholding
-        _, thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-        # Convert binary mask to 3-channel (so it matches the image dimensions)
-        mask_colored = cv2.cvtColor(thresh, cv2.COLOR_GRAY2RGB)
-
-        # Choose mask color (e.g., red [255, 0, 0]), White pixels → Red
-        mask_colored[np.where((mask_colored == [255, 255, 255]).all(axis=2))] = [255, 0, 0]
-
-        if inplace is True:
-            self.mask = mask_colored
-        return mask_colored
-
     def info(self):
         print(f"Image path: {self.img_path}")
         print(f"mask path: {self.mask_path}")
