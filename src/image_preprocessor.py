@@ -1,14 +1,22 @@
+import math
 import os
 import random
 from enum import Enum
 from typing import List, Tuple, Dict, Union
-
 import cv2
 import numpy as np
 from torchvision import transforms
 import torchstain
 
 from src.utils import load_images
+
+
+def _compute_stride(dimension, patch_size):
+    if dimension <= patch_size:
+        return patch_size
+    num_patches = math.ceil((dimension - patch_size) / patch_size) + 1
+    stride = (dimension - patch_size) / (num_patches - 1)
+    return int(stride)
 
 
 class InplaceOption(Enum):
@@ -21,11 +29,11 @@ class ImageProcessor:
     images_dir: str | None
     images: List[Tuple[np.ndarray, str]]
 
-    def __init__(self, images_dir, supported_formats: Tuple[str] = (".jpg", ".jpeg", ".png"),
-                 images: List[np.ndarray] = None) -> None:
+    def __init__(self, images_dir: str, supported_formats: Tuple[str] = (".jpg", ".jpeg", ".png"),
+                 images: List[Tuple[np.ndarray, str]] = None) -> None:
         if images is not None:
             self.images_dir = None
-            self.images = [(img, "") for img in images]
+            self.images = images
             return
         self.images_dir = images_dir
         self.images = load_images(images_dir, supported_formats)
@@ -42,7 +50,7 @@ class ImageProcessor:
         eq_images = []
         for image in self.images:
             img, name = image
-            img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            img_hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
             img_hsv[:, :, 2] = cv2.equalizeHist(img_hsv[:, :, 2])
             equalized_img = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
 
@@ -50,7 +58,7 @@ class ImageProcessor:
                 cv2.imwrite(os.path.join(out_dir, name), equalized_img)
 
             if inplace is True:
-                eq_images.append((equalized_img, name))
+                eq_images.append((cv2.cvtColor(equalized_img, cv2.COLOR_BGR2RGB), name))
 
             result.append({
                 "img_name": name,
@@ -113,11 +121,11 @@ class ImageProcessor:
 
             if inplace is True:
                 if inplace_option == InplaceOption.NORM:
-                    norm_images.append((norm_image, name))
+                    norm_images.append((cv2.cvtColor(norm_image, cv2.COLOR_BGR2RGB), name))
                 elif inplace_option == InplaceOption.HEMATOXYLIN:
-                    norm_images.append((hematoxylin_img, name))
+                    norm_images.append((cv2.cvtColor(hematoxylin_img, cv2.COLOR_BGR2RGB), name))
                 elif inplace_option == InplaceOption.EOSIN:
-                    norm_images.append((eosin_img, name))
+                    norm_images.append((cv2.cvtColor(eosin_img, cv2.COLOR_BGR2RGB), name))
 
             result.append({
                 "img_name": name,
@@ -130,7 +138,82 @@ class ImageProcessor:
             self.images = norm_images
         return result
 
+    def extract_patches(self, masks_dir: str, out_dir: str, patch_size=128, pad=True):
+        patches = []
+        for image in self.images:
+            img, name = image
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            mask_path = os.path.join(masks_dir, name)
+            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
 
+            h, w = img.shape[:2]
+
+            # Compute dynamic strides
+            stride_h = _compute_stride(h, patch_size)
+            stride_w = _compute_stride(w, patch_size)
+
+            # Compute padding
+            pad_h = (patch_size - h % stride_h) % stride_h
+            pad_w = (patch_size - w % stride_w) % stride_w
+
+            if pad:
+                img = cv2.copyMakeBorder(img, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+                mask = cv2.copyMakeBorder(mask, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=(0, ))
+
+            padded_h, padded_w = img.shape[:2]  # Updated sizes
+
+            for y in range(0, padded_h - patch_size + 1, stride_h):
+                for x in range(0, padded_w - patch_size + 1, stride_w):
+                    img_patch = img[y:y + patch_size, x:x + patch_size]
+                    mask_patch = mask[y:y + patch_size, x:x + patch_size]
+
+                    patches.append((img_patch, mask_patch))
+
+                    # Optional: Save to disk
+                    if out_dir:
+                        patch_name = f"{name}_({y}_{x}).png"
+                        img_out_path = os.path.join(out_dir, "images_patch", patch_name)
+                        mask_out_path = os.path.join(out_dir, "masks_patch", patch_name)
+
+                        os.makedirs(os.path.dirname(img_out_path), exist_ok=True)
+                        os.makedirs(os.path.dirname(mask_out_path), exist_ok=True)
+
+                        cv2.imwrite(img_out_path, img_patch)
+                        cv2.imwrite(mask_out_path, mask_patch)
+        return patches
+
+    def relabel_binary(self, masks_dir: str, out_dir: str, target_class: int) -> None:
+        for image in self.images:
+            img, name = image
+            mask_path = os.path.join(masks_dir, name)
+            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+
+            mask[mask != target_class] = 0
+            mask[mask == target_class] = 1
+
+            cv2.imwrite(os.path.join(out_dir, name), mask)
+
+    def scale(self, masks_dir: str, out_dir: str, factor: float = 0.5, inplace: bool = False) -> None:
+        for i, image in enumerate(self.images):
+            img, name = image
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            mask_path = os.path.join(masks_dir, name)
+            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+
+            img_scaled = cv2.resize(img, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_CUBIC)
+            mask_scaled = cv2.resize(mask, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_NEAREST)
+
+            img_out_path = os.path.join(out_dir, "images", name)
+            mask_out_path = os.path.join(out_dir, "masks", name)
+
+            os.makedirs(os.path.dirname(img_out_path), exist_ok=True)
+            os.makedirs(os.path.dirname(mask_out_path), exist_ok=True)
+
+            cv2.imwrite(img_out_path, img_scaled)
+            cv2.imwrite(mask_out_path, mask_scaled)
+
+            if inplace:
+                self.images[i] = (cv2.cvtColor(img_scaled, cv2.COLOR_BGR2RGB), name)
 
 
 

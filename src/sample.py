@@ -19,7 +19,8 @@ class Sample:
             print(f"Error occurred while opening the image: {e}")
 
         try:
-            self.mask = cv2.imread(self.mask_path)
+            self.mask = cv2.imread(self.mask_path, cv2.IMREAD_GRAYSCALE)
+            self.mask[self.mask == 1] = 255
         except Exception as e:
             print(f"Error occurred while opening the mask: {e}")
 
@@ -46,7 +47,7 @@ class Sample:
             plt.figure(figsize=(16, 8), dpi=80, facecolor='w', edgecolor='k')
 
             # Overlay both the images for visualization
-            overlay = cv2.addWeighted(display_img, 0.8, self.mask, 0.2, 0)
+            overlay = cv2.addWeighted(display_img, 0.8, cv2.cvtColor(self.mask, cv2.COLOR_GRAY2RGB), 0.2, 0)
 
             # Display original image
             plt.subplot(1, 3, 1)
@@ -55,7 +56,7 @@ class Sample:
 
             # Display mask
             plt.subplot(1, 3, 2)
-            plt.imshow(self.mask)
+            plt.imshow(cv2.cvtColor(self.mask, cv2.COLOR_GRAY2RGB))
             plt.title("Mask")
 
             # Display overlay

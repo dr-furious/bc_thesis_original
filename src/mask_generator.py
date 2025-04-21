@@ -26,8 +26,8 @@ def _cut(image_path: str, regions: List[List[int]], out_dir: str | None = None) 
         # Re-order for Open CV BGR mode
         roi = roi[:, :, ::-1]
         cut_roi_images.append({
-            "image": roi,
-            "image_copy": np.array(roi),
+            "image": cv2.cvtColor(roi, cv2.COLOR_RGB2BGR),
+            "image_copy": np.array(cv2.cvtColor(roi, cv2.COLOR_RGB2BGR)),
             "x": x,
             "y": y,
             "width": width,
@@ -102,8 +102,8 @@ class MaskGenerator:
     def _apply_operation_to_roi(self, operation: Callable, out_dir: str | None = None) -> None:
         for record in self.image_data:
             for cut in record["roi_cuts"]:
-                roi = np.array(cut["image"], dtype=np.uint8)
-                roi_copy = np.array(cut["image_copy"], dtype=np.uint8)
+                roi = cut["image"]
+                roi_copy = cut["image_copy"]
                 roi = operation(roi, roi_copy)
                 cut["image"] = roi
 
@@ -161,7 +161,7 @@ class MaskGenerator:
 
         self._apply_operation_to_roi(do, "marked_watershed" if save else None)
 
-    def _combine_masks(self, save: bool) -> List[Tuple[np.ndarray, str]]:
+    def _combine_masks(self, save: bool) -> None:
         i = 50
         for record in self.image_data:
             image_name, roi_cuts = record["image_name"], record["roi_cuts"]

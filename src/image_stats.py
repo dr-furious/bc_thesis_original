@@ -29,16 +29,47 @@ class ImageStats:
         average_width = np.mean(image_sizes_np[:, 0])
         average_height = np.mean(image_sizes_np[:, 1])
         average_area = np.mean(image_sizes_np[:, 0] * image_sizes_np[:, 1])
+
+        med_width = np.median(image_sizes_np[:, 0])
+        med_height = np.median(image_sizes_np[:, 1])
+        med_area = np.median(image_sizes_np[:, 0] * image_sizes_np[:, 1])
+
+        min_width = np.min(image_sizes_np[:, 0])
+        min_height = np.min(image_sizes_np[:, 1])
+        min_area = np.min(image_sizes_np[:, 0] * image_sizes_np[:, 1])
+
+        max_width = np.max(image_sizes_np[:, 0])
+        max_height = np.max(image_sizes_np[:, 1])
+        max_area = np.max(image_sizes_np[:, 0] * image_sizes_np[:, 1])
+
         print(f"Count: {count}\n")
         print(f"Average Width: {average_width}")
         print(f"Average Height: {average_height}")
         print(f"Average image area: {average_area}")
+        print(f"Median Width: {med_width}")
+        print(f"Median Height: {med_height}")
+        print(f"Median Area: {med_area}")
+        print(f"Min Width: {min_width}")
+        print(f"Min Height: {min_height}")
+        print(f"Min Area: {min_area}")
+        print(f"Max Width: {max_width}")
+        print(f"Max Height: {max_height}")
+        print(f"Max Area: {max_area}")
 
         stats = {
             "count": count,
             "avg_w": average_width,
             "avg_h": average_height,
-            "avg_area": average_area
+            "avg_area": average_area,
+            "med_w": med_width,
+            "med_h": med_height,
+            "med_area": med_area,
+            "min_w": min_width,
+            "min_h": min_height,
+            "min_area": min_area,
+            "max_w": max_width,
+            "max_h": max_height,
+            "max_area": max_area
         }
 
         if visual is False:
