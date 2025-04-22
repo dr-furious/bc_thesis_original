@@ -38,6 +38,10 @@ class ImageProcessor:
         self.images_dir = images_dir
         self.images = load_images(images_dir, supported_formats)
 
+    def set_images_from_dir(self,  images_dir: str, supported_formats: Tuple[str] = (".jpg", ".jpeg", ".png")) -> None:
+        self.images_dir = images_dir
+        self.images = load_images(images_dir, supported_formats)
+
     def select_random_images(self, num: int = 10) -> List[Tuple[np.ndarray, str]]:
         if num > len(self.images):
             print("The number of images to select is greater than the total number of images.")

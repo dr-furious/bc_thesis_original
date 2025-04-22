@@ -23,11 +23,10 @@ def _cut(image_path: str, regions: List[List[int]], out_dir: str | None = None) 
         # Crop each ROI from image
         roi_img = image.crop((x, y, x + width, y + height))
         roi = np.array(roi_img)
-        # Re-order for Open CV BGR mode
-        roi = roi[:, :, ::-1]
+        roi = cv2.cvtColor(roi, cv2.COLOR_RGB2BGR)
         cut_roi_images.append({
-            "image": cv2.cvtColor(roi, cv2.COLOR_RGB2BGR),
-            "image_copy": np.array(cv2.cvtColor(roi, cv2.COLOR_RGB2BGR)),
+            "image": roi,
+            "image_copy": np.array(roi),
             "x": x,
             "y": y,
             "width": width,
@@ -69,6 +68,10 @@ class MaskGenerator:
 
     def __init__(self, images_dir) -> None:
         self.images_dir = images_dir
+
+    def set_dir(self, images_dir: str) -> None:
+        self.images_dir = images_dir
+        self.image_data = []
 
     def _cut_cells(self, json_path: str, out_dir: str | None = None) \
             -> List[Dict[str, Union[str, List[dict]]]]:
@@ -145,6 +148,8 @@ class MaskGenerator:
 
     def _marked_watershed(self, save: bool) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
+            print(f"ROI shape: {roi.shape}")
+            print(f"ROI max: {roi.max()}")
             dist_transform = cv2.distanceTransform(roi, cv2.DIST_L2, 5)
             _, sure_fg = cv2.threshold(dist_transform, 0.3 * dist_transform.max(), 255, 0)
             sure_fg = np.uint8(sure_fg)
@@ -162,7 +167,6 @@ class MaskGenerator:
         self._apply_operation_to_roi(do, "marked_watershed" if save else None)
 
     def _combine_masks(self, save: bool) -> None:
-        i = 50
         for record in self.image_data:
             image_name, roi_cuts = record["image_name"], record["roi_cuts"]
             image_path = os.path.join(self.images_dir, image_name)
@@ -171,7 +175,7 @@ class MaskGenerator:
             print(f"ROIs: {len(roi_cuts)}")
             print(f"Image name: {image_name}")
 
-            whole_image = np.zeros(original_image.shape[:2])
+            whole_image = np.zeros(original_image.shape[:2], dtype=np.uint8)
 
             print(f"Whole image shape: {whole_image.shape}")
 
@@ -181,16 +185,13 @@ class MaskGenerator:
                 x, y, w, h, roi = _check_bbox(roi=roi,
                                               bbox=(cut["x"], cut["y"], cut["width"], cut["height"]),
                                               image_shape=whole_image.shape)
-                buffer_image = np.zeros_like(whole_image)
+                buffer_image = np.zeros_like(whole_image, dtype=np.uint8)
                 buffer_image[y:y + h, x:x + w] = roi
                 whole_image = cv2.bitwise_or(whole_image, buffer_image)
 
             # For the purpose of visualization
             record["roi_cuts"] = [{"image": whole_image, "image_copy": original_image}]
-            i = i - 1
-            if i < 1:
-                print(self.image_data)
-                return
+            return
 
     def run(self, json_path: str, out_dir: str = None, operations: List[Callable] = None, save_steps: bool = False) \
             -> None:
