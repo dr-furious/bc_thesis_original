@@ -1,5 +1,5 @@
 import os
-
+from enum import Enum
 import cv2
 import numpy as np
 from typing import List, Tuple, Dict, Union, Callable
@@ -9,8 +9,14 @@ from matplotlib import pyplot as plt
 from src.utils import load_json
 
 
-# Mask Generating Workflow:
-# Large PNGs --> Cut cells --> Generate cell masks --> Combine into large masks
+class MaskOperations(Enum):
+    GAUSSIAN_BLUR = "gaussian_blur"
+    ADAPTIVE_THRESHOLD = "adaptive_thresholding"
+    OTSU_THRESHOLD = "otsu_thresholding"
+    MORPH_OPENING = "morph_opening"
+    MORPH_CLOSING = "morph_closing"
+    MARKED_WATERSHED = "marked_watershed"
+    COMBINE_MASKS = "combine_masks"
 
 
 def _cut(image_path: str, regions: List[List[int]], out_dir: str | None = None) \
@@ -67,7 +73,7 @@ class MaskGenerator:
     json_file_path: str
     image_data: List[Dict[str, Union[str, List[dict]]]]
 
-    def __init__(self, images_dir: str, json_file_path: str) -> None:
+    def __init__(self, images_dir: str = "", json_file_path: str = "") -> None:
         self.images_dir = images_dir
         self.json_file_path = json_file_path
 
@@ -94,6 +100,18 @@ class MaskGenerator:
             })
         self.image_data = cut_results
         return self.image_data
+
+    def _get_operation_pipeline(self, operations: List[MaskOperations]) -> List[Callable[[bool], None]]:
+        op_map = {
+            MaskOperations.GAUSSIAN_BLUR: self._gaussian_blur,
+            MaskOperations.ADAPTIVE_THRESHOLD: self._adaptive_thresholding,
+            MaskOperations.OTSU_THRESHOLD: self._otsu_thresholding,
+            MaskOperations.MORPH_OPENING: self._morph_opening,
+            MaskOperations.MORPH_CLOSING: self._morph_closing,
+            MaskOperations.MARKED_WATERSHED: self._marked_watershed,
+            MaskOperations.COMBINE_MASKS: self._combine_masks
+        }
+        return [op_map[op] for op in operations if op in op_map]
 
     def _generate_masks(self, operations: List[Callable], save: bool) \
             -> List[Dict[str, Union[str, List[dict]]]]:
@@ -172,8 +190,8 @@ class MaskGenerator:
             image_path = os.path.join(self.images_dir, image_name)
             original_image = cv2.imread(image_path)
 
-            print(f"ROIs: {len(roi_cuts)}")
-            print(f"Image name: {image_name}")
+            # print(f"ROIs: {len(roi_cuts)}")
+            # print(f"Image name: {image_name}")
 
             whole_image = np.zeros(original_image.shape[:2], dtype=np.uint8)
             for cut in roi_cuts:
@@ -189,23 +207,18 @@ class MaskGenerator:
             # For the purpose of visualization
             record["roi_cuts"] = [{"image": whole_image, "image_copy": original_image}]
 
-    def run(self, out_dir: str, operations: List[Callable] = None, save_steps: bool = False,
+    def run(self, out_dir: str, operations: List[MaskOperations], save_steps: bool = False,
             visualize_range: Tuple[int, int] = (0, 50)) -> None:
         # Cutting
         self._cut_cells(self.json_file_path)
 
         # Applying CV operations
-        operations_pipe = [self._gaussian_blur,
-                           self._adaptive_thresholding,
-                           self._combine_masks,
-                           self._morph_opening,
-                           self._morph_closing,
-                           self._marked_watershed]
+        operations_pipe = self._get_operation_pipeline(operations=operations)
 
         self._generate_masks(operations=operations_pipe, save=save_steps)
 
         # Visualize results, both original image, mask, and overlay
-        i = visualize_range[0]
+        i = 0
         for record in self.image_data:
             image_name, image, mask = record["image_name"], record["roi_cuts"][0]["image_copy"], record["roi_cuts"][0]["image"]
             mask_path = os.path.join(out_dir, image_name)
@@ -213,10 +226,11 @@ class MaskGenerator:
             binary_mask[binary_mask == 255] = 1
             cv2.imwrite(mask_path, binary_mask)
 
-            if visualize_range[0] > i or i > visualize_range[1]:
+            if visualize_range[0] > i or i >= visualize_range[1]:
                 i = i+1
                 continue
-            i = i+1
+            i = i + 1
+
             plt.figure(figsize=(10, 10))
 
             plt.subplot(131)

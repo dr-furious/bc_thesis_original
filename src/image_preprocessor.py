@@ -142,17 +142,13 @@ class ImageProcessor:
             self.images = norm_images
         return result
 
-    def extract_patches(self, masks_dir: str, out_dir: str, patch_size=128, pad=True):
-        patches = []
+    def extract_patches(self, masks_dirs: List[str], out_dir: str, patch_size=128, pad=True) -> None:
         for image in self.images:
             img, name = image
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            mask_path = os.path.join(masks_dir, name)
-            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-
             h, w = img.shape[:2]
 
-            # Compute dynamic strides
+            # Compute dynamic stride
             stride_h = _compute_stride(h, patch_size)
             stride_w = _compute_stride(w, patch_size)
 
@@ -162,29 +158,40 @@ class ImageProcessor:
 
             if pad:
                 img = cv2.copyMakeBorder(img, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=(0, 0, 0))
-                mask = cv2.copyMakeBorder(mask, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=(0, ))
 
-            padded_h, padded_w = img.shape[:2]  # Updated sizes
-
+            padded_h, padded_w = img.shape[:2]
+            patch_coords = []
             for y in range(0, padded_h - patch_size + 1, stride_h):
                 for x in range(0, padded_w - patch_size + 1, stride_w):
-                    img_patch = img[y:y + patch_size, x:x + patch_size]
+                    if y + patch_size > h or x + patch_size > w:
+                        continue  # Skip patch that crosses original image border
+                    patch_coords.append((y, x))
+
+            # Save image patches
+            for y, x in patch_coords:
+                img_patch = img[y:y + patch_size, x:x + patch_size]
+                patch_name = f"{name}_({y}_{x}).png"
+                img_out_path = os.path.join(out_dir, "images", patch_name)
+                os.makedirs(os.path.dirname(img_out_path), exist_ok=True)
+                cv2.imwrite(img_out_path, img_patch)
+
+            # Save corresponding mask patches for each mask dir
+            for masks_dir in masks_dirs:
+                mask_path = os.path.join(masks_dir, name)
+                mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+                if pad:
+                    mask = cv2.copyMakeBorder(mask, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=(0,))
+
+                mask_subdir = os.path.basename(masks_dir)
+
+                for y, x in patch_coords:
                     mask_patch = mask[y:y + patch_size, x:x + patch_size]
-
-                    patches.append((img_patch, mask_patch))
-
-                    # Optional: Save to disk
-                    if out_dir:
-                        patch_name = f"{name}_({y}_{x}).png"
-                        img_out_path = os.path.join(out_dir, "images_patch", patch_name)
-                        mask_out_path = os.path.join(out_dir, "masks_patch", patch_name)
-
-                        os.makedirs(os.path.dirname(img_out_path), exist_ok=True)
-                        os.makedirs(os.path.dirname(mask_out_path), exist_ok=True)
-
-                        cv2.imwrite(img_out_path, img_patch)
-                        cv2.imwrite(mask_out_path, mask_patch)
-        return patches
+                    patch_name = f"{name}_({y}_{x}).png"
+                    mask_out_path = os.path.join(out_dir, "masks", mask_subdir, patch_name)
+                    if len(masks_dirs) == 1:
+                        mask_out_path = os.path.join(out_dir, "masks", patch_name)
+                    os.makedirs(os.path.dirname(mask_out_path), exist_ok=True)
+                    cv2.imwrite(mask_out_path, mask_patch)
 
     def relabel_binary(self, masks_dir: str, out_dir: str, target_class: int) -> None:
         for image in self.images:
@@ -197,27 +204,28 @@ class ImageProcessor:
 
             cv2.imwrite(os.path.join(out_dir, name), mask)
 
-    def scale(self, masks_dir: str, out_dir: str, factor: float = 0.5, inplace: bool = False) -> None:
+    def scale(self, masks_dirs: List[str], out_dir: str, factor: float = 0.5, inplace: bool = False) -> None:
         for i, image in enumerate(self.images):
             img, name = image
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            mask_path = os.path.join(masks_dir, name)
-            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-
             img_scaled = cv2.resize(img, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_CUBIC)
-            mask_scaled = cv2.resize(mask, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_NEAREST)
-
             img_out_path = os.path.join(out_dir, "images", name)
-            mask_out_path = os.path.join(out_dir, "masks", name)
-
             os.makedirs(os.path.dirname(img_out_path), exist_ok=True)
-            os.makedirs(os.path.dirname(mask_out_path), exist_ok=True)
-
             cv2.imwrite(img_out_path, img_scaled)
-            cv2.imwrite(mask_out_path, mask_scaled)
-
             if inplace:
                 self.images[i] = (cv2.cvtColor(img_scaled, cv2.COLOR_BGR2RGB), name)
+
+            for masks_dir in masks_dirs:
+                mask_path = os.path.join(masks_dir, name)
+                mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+                mask_scaled = cv2.resize(mask, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_NEAREST)
+                mask_out_path = os.path.join(out_dir, "masks", os.path.basename(masks_dir), name)
+                if len(masks_dirs) == 1:
+                    mask_out_path = os.path.join(out_dir, "masks", name)
+                os.makedirs(os.path.dirname(mask_out_path), exist_ok=True)
+                cv2.imwrite(mask_out_path, mask_scaled)
+
+
 
 
 
