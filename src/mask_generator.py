@@ -64,10 +64,12 @@ def _check_bbox(roi: np.ndarray, bbox: Tuple[int, int, int, int], image_shape: T
 
 class MaskGenerator:
     images_dir: str | None
+    json_file_path: str
     image_data: List[Dict[str, Union[str, List[dict]]]]
 
-    def __init__(self, images_dir) -> None:
+    def __init__(self, images_dir: str, json_file_path: str) -> None:
         self.images_dir = images_dir
+        self.json_file_path = json_file_path
 
     def set_dir(self, images_dir: str) -> None:
         self.images_dir = images_dir
@@ -148,8 +150,6 @@ class MaskGenerator:
 
     def _marked_watershed(self, save: bool) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
-            print(f"ROI shape: {roi.shape}")
-            print(f"ROI max: {roi.max()}")
             dist_transform = cv2.distanceTransform(roi, cv2.DIST_L2, 5)
             _, sure_fg = cv2.threshold(dist_transform, 0.3 * dist_transform.max(), 255, 0)
             sure_fg = np.uint8(sure_fg)
@@ -176,9 +176,6 @@ class MaskGenerator:
             print(f"Image name: {image_name}")
 
             whole_image = np.zeros(original_image.shape[:2], dtype=np.uint8)
-
-            print(f"Whole image shape: {whole_image.shape}")
-
             for cut in roi_cuts:
                 roi = np.array(cut["image"], dtype=np.uint8)
                 # roi = np.ones(roi.shape[:2])
@@ -191,12 +188,11 @@ class MaskGenerator:
 
             # For the purpose of visualization
             record["roi_cuts"] = [{"image": whole_image, "image_copy": original_image}]
-            return
 
-    def run(self, json_path: str, out_dir: str = None, operations: List[Callable] = None, save_steps: bool = False) \
-            -> None:
+    def run(self, out_dir: str, operations: List[Callable] = None, save_steps: bool = False,
+            visualize_range: Tuple[int, int] = (0, 50)) -> None:
         # Cutting
-        self._cut_cells(json_path)
+        self._cut_cells(self.json_file_path)
 
         # Applying CV operations
         operations_pipe = [self._gaussian_blur,
@@ -209,24 +205,34 @@ class MaskGenerator:
         self._generate_masks(operations=operations_pipe, save=save_steps)
 
         # Visualize results, both original image, mask, and overlay
-        i = 50
-        for image in self.image_data:
+        i = visualize_range[0]
+        for record in self.image_data:
+            image_name, image, mask = record["image_name"], record["roi_cuts"][0]["image_copy"], record["roi_cuts"][0]["image"]
+            mask_path = os.path.join(out_dir, image_name)
+            binary_mask = np.array(mask)
+            binary_mask[binary_mask == 255] = 1
+            cv2.imwrite(mask_path, binary_mask)
+
+            if visualize_range[0] > i or i > visualize_range[1]:
+                i = i+1
+                continue
+            i = i+1
             plt.figure(figsize=(10, 10))
 
             plt.subplot(131)
-            plt.imshow(cv2.cvtColor(image["roi_cuts"][0]["image_copy"], cv2.COLOR_BGR2RGB))
+            plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
             plt.title("Original Image")
             plt.axis('off')
 
             plt.subplot(132)
-            plt.imshow(image["roi_cuts"][0]["image"], cmap='gray')
+            plt.imshow(mask, cmap='gray')
             plt.title("Mask")
             plt.axis('off')
 
-            color_mask = cv2.cvtColor(image["roi_cuts"][0]["image"], cv2.COLOR_GRAY2BGR)
+            color_mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
             # Get green color for mask
             color_mask[np.all(color_mask == [255, 255, 255], axis=-1)] = [15, 255, 0]
-            overlay = cv2.addWeighted(image["roi_cuts"][0]["image_copy"], 0.7,
+            overlay = cv2.addWeighted(image, 0.7,
                                       color_mask, 0.3, 0)
             plt.subplot(133)
             plt.imshow(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
@@ -234,8 +240,4 @@ class MaskGenerator:
             plt.axis('off')
 
             plt.show()
-
-            i = i-1
-            if i < 1:
-                return
 
