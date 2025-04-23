@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
 from segmentation_models_pytorch.metrics import get_stats
-from segmentation_models_pytorch.metrics.functional import iou_score, f1_score
+from segmentation_models_pytorch.metrics.functional import iou_score, f1_score, accuracy, recall, precision
 import torch
 
 
@@ -17,7 +17,7 @@ class SegModel(pl.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters()
-        # Dynamically get the model class from smp
+        # Get the model class from smp
         try:
             model_class = getattr(smp, model_name)
         except AttributeError:
@@ -40,15 +40,20 @@ class SegModel(pl.LightningModule):
         logits = self(images)
         loss = self.loss_fn(logits, masks)
 
-        preds = torch.sigmoid(logits) > 0.5
-        tp, fp, fn, tn = get_stats(preds.long(), masks.long(), mode='binary')
+        tp, fp, fn, tn = get_stats(logits, masks.long(), mode="binary", threshold=0.5)
 
-        iou = iou_score(tp, fp, fn, tn, reduction='micro')
-        f1 = f1_score(tp, fp, fn, tn, reduction='micro')
+        iou = iou_score(tp, fp, fn, tn, reduction="micro")
+        f1 = f1_score(tp, fp, fn, tn, reduction="micro")
+        acc = accuracy(tp, fp, fn, tn, reduction="micro")
+        pre = precision(tp, fp, fn, tn, reduction="micro")
+        rec = recall(tp, fp, fn, tn, reduction="micro")
 
-        self.log(f"{stage}_loss", loss, on_epoch=True)
-        self.log(f"{stage}_iou", iou, on_epoch=True)
-        self.log(f"{stage}_f1", f1, on_epoch=True)
+        self.log(f"{stage}/loss", loss, on_epoch=True)
+        self.log(f"{stage}/iou", iou, on_epoch=True)
+        self.log(f"{stage}/f1", f1, on_epoch=True)
+        self.log(f"{stage}/accuracy", acc, on_epoch=True)
+        self.log(f"{stage}/precision", pre, on_epoch=True)
+        self.log(f"{stage}/recall", rec, on_epoch=True)
 
         return loss
 
@@ -62,4 +67,6 @@ class SegModel(pl.LightningModule):
         return self._shared_step(batch, "test")
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+        return [optimizer], [scheduler]

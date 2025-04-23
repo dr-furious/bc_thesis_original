@@ -1,0 +1,4 @@
+# config.yaml
+learning_rate: 0.001
+batch_size: 16
+max_epochs: 2
