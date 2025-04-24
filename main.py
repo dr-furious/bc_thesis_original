@@ -19,7 +19,6 @@ def main():
     parser.add_argument("--data_path", type=str, default="./data")
     parser.add_argument("--mask_dir_name", type=str, default="raw_otsu")
     parser.add_argument("--wandb", type=str, default="")
-    parser.add_argument("--wandb_project_name", type=str, default="segmentation_project")
     parser.add_argument("--config", type=str, default="./configs/models/base.yaml")
     parser.add_argument("--model_name", type=str, default="Unet")
     parser.add_argument("--encoder_name", type=str, default="resnet34")
@@ -53,7 +52,7 @@ def main():
     )
 
     wandb_logger = WandbLogger(
-        project=args.wandb_project_name,
+        project=f"segmentation_{args.model_name}",
         name=args.mask_dir_name,
         save_dir="outputs/",
     )
