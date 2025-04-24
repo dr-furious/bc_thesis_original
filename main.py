@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--data_path", type=str, default="./data")
     parser.add_argument("--mask_dir_name", type=str, default="raw_otsu")
     parser.add_argument("--wandb", type=str, default="")
+    parser.add_argument("--wandb_proj_name", type=str, default="segmentation")
     parser.add_argument("--config", type=str, default="./configs/models/base.yaml")
     parser.add_argument("--model_name", type=str, default="Unet")
     parser.add_argument("--encoder_name", type=str, default="resnet34")
@@ -32,6 +33,7 @@ def main():
     max_epochs = config["max_epochs"]
     batch_size = config["batch_size"]
     learning_rate = config["learning_rate"]
+    early_stop_patience = config["early_stop_patience"]
 
     wandb.login(key=args.wandb)
 
@@ -48,15 +50,14 @@ def main():
 
     early_stop = EarlyStopping(
         monitor="val/loss",
-        patience=5, mode="min"
+        patience=early_stop_patience, mode="min"
     )
 
     wandb_logger = WandbLogger(
-        project=f"segmentation_{args.model_name}",
+        project=f"segmentation_{args.wandb_proj_name}",
         name=args.mask_dir_name,
         save_dir="outputs/",
     )
-    wandb_logger.log_hyperparams(vars(args))
 
     # Initialize the full training dataset
     full_train_dataset = TILDataset(
