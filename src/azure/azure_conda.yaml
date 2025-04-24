@@ -1,0 +1,16 @@
+name: tiger-segmentation
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - torch
+      - torchvision
+      - pytorch-lightning
+      - segmentation-models-pytorch
+      - wandb
+      - opencv-python
+      - pyyaml
+      - json5
