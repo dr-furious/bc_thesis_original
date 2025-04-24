@@ -10,7 +10,7 @@ from src.utils import load_json
 
 
 class MaskOperations(Enum):
-    GAUSSIAN_BLUR = "gaussian_blur"
+    BLUR = "blur"
     ADAPTIVE_THRESHOLD = "adaptive_thresholding"
     OTSU_THRESHOLD = "otsu_thresholding"
     MORPH_OPENING = "morph_opening"
@@ -103,7 +103,7 @@ class MaskGenerator:
 
     def _get_operation_pipeline(self, operations: List[MaskOperations]) -> List[Callable[[bool], None]]:
         op_map = {
-            MaskOperations.GAUSSIAN_BLUR: self._gaussian_blur,
+            MaskOperations.BLUR: self._blur,
             MaskOperations.ADAPTIVE_THRESHOLD: self._adaptive_thresholding,
             MaskOperations.OTSU_THRESHOLD: self._otsu_thresholding,
             MaskOperations.MORPH_OPENING: self._morph_opening,
@@ -130,11 +130,11 @@ class MaskGenerator:
                 roi = operation(roi, roi_copy)
                 cut["image"] = roi
 
-    def _gaussian_blur(self, save: bool) -> None:
+    def _blur(self, save: bool) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
-            return cv2.GaussianBlur(roi, (3, 3), 0)
+            return cv2.medianBlur(roi, 3)
 
-        self._apply_operation_to_roi(do, "gaussian_blur" if save else None)
+        self._apply_operation_to_roi(do, "blur" if save else None)
 
     def _otsu_thresholding(self, save: bool) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
@@ -207,6 +207,23 @@ class MaskGenerator:
             # For the purpose of visualization
             record["roi_cuts"] = [{"image": whole_image, "image_copy": original_image}]
 
+    def fuse_masks(self, mask_dirs: List[str], out_dir: str, colorized_dir: str = None, vote_pixel: float = 0.5) -> None:
+        image_names = os.listdir(self.images_dir)
+
+        for name in image_names:
+            fused_mask = np.zeros_like(cv2.imread(os.path.join(self.images_dir, name), cv2.IMREAD_GRAYSCALE))
+            for mask_dir in mask_dirs:
+                mask_path = os.path.join(mask_dir, name)
+                mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+                fused_mask = cv2.add(fused_mask, mask)
+            mask_out_path = os.path.join(out_dir, name)
+            out_mask = np.zeros_like(fused_mask)
+            out_mask[fused_mask >= len(mask_dirs)*vote_pixel] = 1
+            cv2.imwrite(mask_out_path, out_mask)
+            if colorized_dir is not None:
+                mask_path = os.path.join(colorized_dir, name)
+                cv2.imwrite(mask_path, fused_mask*10)
+
     def run(self, out_dir: str, operations: List[MaskOperations], save_steps: bool = False,
             visualize_range: Tuple[int, int] = (0, 50)) -> None:
         # Cutting
@@ -217,15 +234,18 @@ class MaskGenerator:
 
         self._generate_masks(operations=operations_pipe, save=save_steps)
 
-        # Visualize results, both original image, mask, and overlay
-        i = 0
         for record in self.image_data:
-            image_name, image, mask = record["image_name"], record["roi_cuts"][0]["image_copy"], record["roi_cuts"][0]["image"]
+            image_name, mask = record["image_name"], record["roi_cuts"][0]["image"]
             mask_path = os.path.join(out_dir, image_name)
             binary_mask = np.array(mask)
             binary_mask[binary_mask == 255] = 1
             cv2.imwrite(mask_path, binary_mask)
 
+        # Visualize results, both original image, mask, and overlay
+        i = 0
+        for record in self.image_data:
+            image, mask = record["roi_cuts"][0]["image_copy"], record["roi_cuts"][0][
+                "image"]
             if visualize_range[0] > i or i >= visualize_range[1]:
                 i = i+1
                 continue

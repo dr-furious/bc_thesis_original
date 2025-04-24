@@ -54,7 +54,7 @@ class ImageProcessor:
         eq_images = []
         for image in self.images:
             img, name = image
-            img_hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+            img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             img_hsv[:, :, 2] = cv2.equalizeHist(img_hsv[:, :, 2])
             equalized_img = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
 
@@ -62,7 +62,7 @@ class ImageProcessor:
                 cv2.imwrite(os.path.join(out_dir, name), equalized_img)
 
             if inplace is True:
-                eq_images.append((cv2.cvtColor(equalized_img, cv2.COLOR_BGR2RGB), name))
+                eq_images.append((equalized_img, name))
 
             result.append({
                 "img_name": name,
@@ -96,7 +96,7 @@ class ImageProcessor:
         ])
 
         # Images to tensors
-        target_images = [T(img[0]) for img in target_images]
+        target_images = [T(cv2.cvtColor(img[0], cv2.COLOR_BGR2RGB)) for img in target_images]
 
         # Prepare normalizer
         normalizer = torchstain.normalizers.MultiMacenkoNormalizer(backend="torch")
@@ -107,7 +107,7 @@ class ImageProcessor:
         norm_images = []
         for image in self.images:
             img, name = image
-            img = T(img)
+            img = T(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             norm_img_tensor, hematoxylin, eosin = normalizer.normalize(I=img, stains=True)
 
             norm_image = np.clip(norm_img_tensor.cpu().numpy(), 0, 255).astype(np.uint8)
@@ -125,11 +125,11 @@ class ImageProcessor:
 
             if inplace is True:
                 if inplace_option == InplaceOption.NORM:
-                    norm_images.append((cv2.cvtColor(norm_image, cv2.COLOR_BGR2RGB), name))
+                    norm_images.append((norm_image, name))
                 elif inplace_option == InplaceOption.HEMATOXYLIN:
-                    norm_images.append((cv2.cvtColor(hematoxylin_img, cv2.COLOR_BGR2RGB), name))
+                    norm_images.append((hematoxylin_img, name))
                 elif inplace_option == InplaceOption.EOSIN:
-                    norm_images.append((cv2.cvtColor(eosin_img, cv2.COLOR_BGR2RGB), name))
+                    norm_images.append((eosin_img, name))
 
             result.append({
                 "img_name": name,
@@ -145,7 +145,6 @@ class ImageProcessor:
     def extract_patches(self, masks_dirs: List[str], out_dir: str, patch_size=128, pad=True) -> None:
         for image in self.images:
             img, name = image
-            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             h, w = img.shape[:2]
 
             # Compute dynamic stride
@@ -207,13 +206,12 @@ class ImageProcessor:
     def scale(self, masks_dirs: List[str], out_dir: str, factor: float = 0.5, inplace: bool = False) -> None:
         for i, image in enumerate(self.images):
             img, name = image
-            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             img_scaled = cv2.resize(img, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_CUBIC)
             img_out_path = os.path.join(out_dir, "images", name)
             os.makedirs(os.path.dirname(img_out_path), exist_ok=True)
             cv2.imwrite(img_out_path, img_scaled)
             if inplace:
-                self.images[i] = (cv2.cvtColor(img_scaled, cv2.COLOR_BGR2RGB), name)
+                self.images[i] = (img_scaled, name)
 
             for masks_dir in masks_dirs:
                 mask_path = os.path.join(masks_dir, name)

@@ -14,7 +14,6 @@ def load_images(img_dir: str, supported_formats: Tuple[str] = (".jpg", ".jpeg", 
         img_path = os.path.join(img_dir, image_file)
         try:
             img = cv2.imread(img_path)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             images.append((img, image_file))
         except FileNotFoundError and FileExistsError as e:
             print(f"Error opening image: {img_path}\nError: {e}")

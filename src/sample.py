@@ -44,19 +44,22 @@ class Sample:
 
         display_img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
         if with_mask:
-            plt.figure(figsize=(16, 8), dpi=80, facecolor='w', edgecolor='k')
+            self.mask[self.mask == 1] = 255
+            self.mask = cv2.cvtColor(self.mask, cv2.COLOR_GRAY2RGB)
+            self.mask[np.all(self.mask == [255, 255, 255], axis=-1)] = [15, 255, 0]
+            plt.figure(figsize=(16, 8), dpi=80, facecolor="w", edgecolor="k")
 
             # Overlay both the images for visualization
-            overlay = cv2.addWeighted(display_img, 0.8, cv2.cvtColor(self.mask, cv2.COLOR_GRAY2RGB), 0.2, 0)
+            overlay = cv2.addWeighted(display_img, 0.8, self.mask, 0.2, 0)
 
             # Display original image
             plt.subplot(1, 3, 1)
             plt.imshow(display_img)
             plt.title("Original Image")
 
-            # Display mask
+            # Display self.mask
             plt.subplot(1, 3, 2)
-            plt.imshow(cv2.cvtColor(self.mask, cv2.COLOR_GRAY2RGB))
+            plt.imshow(self.mask)
             plt.title("Mask")
 
             # Display overlay
@@ -66,6 +69,6 @@ class Sample:
 
             plt.show()
         else:
-            plt.figure(figsize=(4, 4), dpi=80, facecolor='w', edgecolor='k')
+            plt.figure(figsize=(4, 4), dpi=80, facecolor="w", edgecolor="k")
             plt.imshow(display_img)
             plt.show()
