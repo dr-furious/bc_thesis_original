@@ -1,13 +1,17 @@
 data
-dataDTD
-models
-notebooks
+outputs
+
+src/image_preprocessor.py
+src/image_stats.py
+src/sample.py
+src/mask_generator.py
+
+main.ipynb
+preprocess.ipynb
 
 .git
+.gitignore
 .idea
-img
-scripts
+.venv
 __pycache__
-Inference.ipynb
-AzureScripts.zip
-wandb
+*.DS_Store
