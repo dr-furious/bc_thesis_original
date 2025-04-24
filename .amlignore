@@ -1,5 +1,6 @@
 data
 outputs
+src/azure
 
 src/image_preprocessor.py
 src/image_stats.py
@@ -8,6 +9,7 @@ src/mask_generator.py
 
 main.ipynb
 preprocess.ipynb
+requirements.txt
 
 .git
 .gitignore
