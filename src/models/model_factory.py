@@ -1,5 +1,7 @@
+import numpy as np
 import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
+import wandb
 from segmentation_models_pytorch.metrics import get_stats
 from segmentation_models_pytorch.metrics.functional import iou_score, f1_score, accuracy, recall, precision
 import torch
@@ -10,7 +12,7 @@ class SegModel(pl.LightningModule):
         self,
         model_name: str = "Unet",
         encoder_name: str = "resnet34",
-        encoder_weights: str = "imagenet",
+        encoder_weights: str = None,
         in_channels: int = 3,
         classes: int = 1,
         learning_rate: float = 1e-3,
@@ -40,7 +42,7 @@ class SegModel(pl.LightningModule):
         logits = self(images)
         loss = self.loss_fn(logits, masks)
 
-        tp, fp, fn, tn = get_stats(logits, masks.long(), mode="binary", threshold=0.5)
+        tp, fp, fn, tn = get_stats(logits, masks.long(), mode="binary", threshold=0.3)
 
         iou = iou_score(tp, fp, fn, tn, reduction="micro")
         f1 = f1_score(tp, fp, fn, tn, reduction="micro")
@@ -61,10 +63,55 @@ class SegModel(pl.LightningModule):
         return self._shared_step(batch, "train")
 
     def validation_step(self, batch, batch_idx):
-        return self._shared_step(batch, "val")
+        loss = self._shared_step(batch, "val")
+        self._log_images(batch, "val")
+        return loss
 
     def test_step(self, batch, batch_idx):
-        return self._shared_step(batch, "test")
+        loss = self._shared_step(batch, "test")
+        self._log_images(batch, "test")
+        return loss
+
+    def _log_images(self, batch, stage: str):
+        images, masks = batch
+        logits = self(images)
+        probs = torch.sigmoid(logits)
+        preds = (probs > 0.5).float()
+
+        images = images.cpu().numpy()
+        masks = masks.cpu().numpy()
+        preds = preds.cpu().numpy()
+
+        num_images = min(6, images.shape[0])  # Log up to 4 images
+        logged_images = []
+        for i in range(num_images):
+            img = images[i].transpose(1, 2, 0)  # Convert from CHW to HWC
+            mask = masks[i][0]  # Assuming masks have shape (B, 1, H, W)
+            pred = preds[i][0]
+
+            # Convert to uint8
+            img = img.astype(np.uint8)
+            mask = mask.astype(np.uint8)
+            pred = pred.astype(np.uint8)
+
+            # Create a wandb.Image with masks
+            wandb_image = wandb.Image(
+                img,
+                masks={
+                    "ground_truth": {
+                        "mask_data": mask,
+                        "class_labels": {0: "background", 1: "lymphocyte"},
+                    },
+                    "prediction": {
+                        "mask_data": pred,
+                        "class_labels": {0: "background", 1: "lymphocyte"},
+                    },
+                },
+            )
+            logged_images.append(wandb_image)
+
+        # The below warning is OK as long as WandbLogger is used with the Trainer
+        self.logger.experiment.log({f"{stage}/examples": logged_images}, commit=False)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
