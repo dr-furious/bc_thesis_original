@@ -23,7 +23,7 @@ def main():
     parser.add_argument("--config", type=str, default="./configs/models/base.yaml")
     parser.add_argument("--model_name", type=str, default="Unet")
     parser.add_argument("--encoder_name", type=str, default="resnet34")
-    parser.add_argument("--encoder_weights", type=str, default="imagenet")
+    parser.add_argument("--encoder_weights", type=str, default=None)
     args = parser.parse_args()
 
     # Load hyperparameters from the YAML config file
@@ -55,7 +55,7 @@ def main():
 
     wandb_logger = WandbLogger(
         project=f"segmentation_{args.wandb_proj_name}",
-        name=args.mask_dir_name,
+        name=args.model_name,
         save_dir="outputs/",
     )
 
