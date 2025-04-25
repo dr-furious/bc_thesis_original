@@ -64,12 +64,14 @@ class SegModel(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         loss = self._shared_step(batch, "val")
-        self._log_images(batch, "val")
+        if batch_idx % 10 == 0:
+            self._log_images(batch, "val")
         return loss
 
     def test_step(self, batch, batch_idx):
         loss = self._shared_step(batch, "test")
-        self._log_images(batch, "test")
+        if batch_idx % 10 == 0:
+            self._log_images(batch, "test")
         return loss
 
     def _log_images(self, batch, stage: str):
@@ -111,7 +113,7 @@ class SegModel(pl.LightningModule):
             logged_images.append(wandb_image)
 
         # The below warning is OK as long as WandbLogger is used with the Trainer
-        self.logger.experiment.log({f"{stage}/examples": logged_images}, commit=False)
+        self.logger.experiment.log({f"{stage}/examples": logged_images})
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)

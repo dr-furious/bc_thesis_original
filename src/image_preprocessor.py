@@ -145,6 +145,7 @@ class ImageProcessor:
     def extract_patches(self, masks_dirs: List[str], out_dir: str, patch_size=128, pad=True) -> None:
         for image in self.images:
             img, name = image
+            name = os.path.splitext(os.path.basename(name))[0]
             h, w = img.shape[:2]
 
             # Compute dynamic stride
@@ -176,7 +177,7 @@ class ImageProcessor:
 
             # Save corresponding mask patches for each mask dir
             for masks_dir in masks_dirs:
-                mask_path = os.path.join(masks_dir, name)
+                mask_path = os.path.join(masks_dir, f"{name}.png")
                 mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
                 if pad:
                     mask = cv2.copyMakeBorder(mask, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=(0,))
@@ -222,6 +223,26 @@ class ImageProcessor:
                     mask_out_path = os.path.join(out_dir, "masks", name)
                 os.makedirs(os.path.dirname(mask_out_path), exist_ok=True)
                 cv2.imwrite(mask_out_path, mask_scaled)
+
+    def rotate(self, masks_dir: str, out_dir: str, degrees: List[int], inplace: bool = False) -> None:
+        for i, record in enumerate(self.images):
+            img, name = record
+            mask_path = os.path.join(masks_dir, name)
+            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+            for degree in degrees:
+                M = cv2.getRotationMatrix2D((img.shape[1] / 2, img.shape[0] / 2), degree, 1)
+                rotated_img = cv2.warpAffine(img, M, (img.shape[1], img.shape[0]))
+                rotated_mask = cv2.warpAffine(mask, M, (mask.shape[1], mask.shape[0]), flags=cv2.INTER_NEAREST)
+                rotated_name = os.path.splitext(os.path.basename(name))[0]
+                rotated_name = f"{rotated_name}_{degree}.png"
+                img_out_dir = os.path.join(out_dir, "images")
+                mask_out_dir = os.path.join(out_dir, "masks")
+                os.makedirs(img_out_dir, exist_ok=True)
+                os.makedirs(mask_out_dir, exist_ok=True)
+                cv2.imwrite(os.path.join(img_out_dir, rotated_name), rotated_img)
+                cv2.imwrite(os.path.join(mask_out_dir, rotated_name), rotated_mask)
+                if inplace:
+                    self.images[i] = (rotated_img, name)
 
 
 
