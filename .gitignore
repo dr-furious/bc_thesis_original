@@ -22,5 +22,6 @@ data/processed-train/
 data/raw-test/
 data/processed-test
 outputs/wandb
+outputs/checkpoints
 
 # files to ignore

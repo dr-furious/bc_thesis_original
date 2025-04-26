@@ -10,6 +10,7 @@ import torch
 class SegModel(pl.LightningModule):
     def __init__(
         self,
+        model_instance=None,
         model_name: str = "Unet",
         encoder_name: str = "resnet34",
         encoder_weights: str = None,
@@ -19,18 +20,21 @@ class SegModel(pl.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters()
-        # Get the model class from smp
-        try:
-            model_class = getattr(smp, model_name)
-        except AttributeError:
-            raise ValueError(f"Model {model_name} is not available in segmentation_models_pytorch.")
+        if model_instance is None:
+            # Get the model class from smp
+            try:
+                model_class = getattr(smp, model_name)
+            except AttributeError:
+                raise ValueError(f"Model {model_name} is not available in segmentation_models_pytorch.")
 
-        self.model = model_class(
-            encoder_name=encoder_name,
-            encoder_weights=encoder_weights,
-            in_channels=in_channels,
-            classes=classes,
-        )
+            self.model = model_class(
+                encoder_name=encoder_name,
+                encoder_weights=encoder_weights,
+                in_channels=in_channels,
+                classes=classes,
+            )
+        else:
+            self.model = model_instance
 
         self.loss_fn = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
 
@@ -42,13 +46,19 @@ class SegModel(pl.LightningModule):
         logits = self(images)
         loss = self.loss_fn(logits, masks)
 
-        tp, fp, fn, tn = get_stats(logits, masks.long(), mode="binary", threshold=0.3)
+        tp, fp, fn, tn = get_stats(logits, masks.long(), mode="binary", threshold=0.5)
 
-        iou = iou_score(tp, fp, fn, tn, reduction="micro")
-        f1 = f1_score(tp, fp, fn, tn, reduction="micro")
-        acc = accuracy(tp, fp, fn, tn, reduction="micro")
-        pre = precision(tp, fp, fn, tn, reduction="micro")
-        rec = recall(tp, fp, fn, tn, reduction="micro")
+        iou = iou_score(tp, fp, fn, tn, reduction="micro", zero_division=0.0)
+        f1 = f1_score(tp, fp, fn, tn, reduction="micro", zero_division=0.0)
+        acc = accuracy(tp, fp, fn, tn, reduction="micro", zero_division=0.0)
+        pre = precision(tp, fp, fn, tn, reduction="micro", zero_division=0.0)
+        rec = recall(tp, fp, fn, tn, reduction="micro", zero_division=0.0)
+
+        if stage == "val":
+            print("iou:", iou.item())
+            print("f1:", f1.item())
+            print("precision:", pre.item())
+            print("recall:", rec.item())
 
         self.log(f"{stage}/loss", loss, on_epoch=True)
         self.log(f"{stage}/iou", iou, on_epoch=True)

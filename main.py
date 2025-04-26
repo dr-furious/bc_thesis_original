@@ -1,4 +1,7 @@
 import argparse
+
+import numpy as np
+import torch
 import wandb
 import json
 import yaml
@@ -6,7 +9,8 @@ import os
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Subset
+from sklearn.model_selection import StratifiedGroupKFold
 
 from src.models.til_dataset import TILDataset
 from src.models.model_factory import SegModel
@@ -17,14 +21,18 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_path", type=str, default="./data")
-    parser.add_argument("--mask_dir_name", type=str, default="raw_otsu")
-    parser.add_argument("--wandb", type=str, default="")
+    parser.add_argument("--mask_dir_name", type=str, default="")
+    parser.add_argument("--wandb", type=str, default=None)
     parser.add_argument("--wandb_proj_name", type=str, default="segmentation")
+    parser.add_argument("--wandb_run_name", type=str, default="run")
     parser.add_argument("--config", type=str, default="./configs/models/base.yaml")
     parser.add_argument("--model_name", type=str, default="Unet")
     parser.add_argument("--encoder_name", type=str, default="resnet34")
     parser.add_argument("--encoder_weights", type=str, default=None)
     args = parser.parse_args()
+
+    print(os.listdir(args.data_path))
+    # return
 
     # Load hyperparameters from the YAML config file
     with open(args.config, "r") as f:
@@ -35,7 +43,10 @@ def main():
     learning_rate = config["learning_rate"]
     early_stop_patience = config["early_stop_patience"]
 
-    wandb.login(key=args.wandb)
+    if wandb is not None:
+        wandb.login(key=args.wandb)
+    else:
+        wandb.login()
 
     # Create outputs directory
     os.makedirs("outputs", exist_ok=True)
@@ -55,7 +66,7 @@ def main():
 
     wandb_logger = WandbLogger(
         project=f"segmentation_{args.wandb_proj_name}",
-        name=args.model_name,
+        name=args.wandb_run_name,
         save_dir="outputs/",
     )
 
@@ -65,13 +76,35 @@ def main():
         os.path.join(args.data_path, "train/masks", str(args.mask_dir_name))
     )
 
-    # Split into training and validation datasets
-    train_size = int(0.8 * len(full_train_dataset))
-    val_size = len(full_train_dataset) - train_size
     pl.seed_everything(42)
-    train_dataset, val_dataset = random_split(full_train_dataset, [train_size, val_size])
 
-    # Create data loaders
+    # Split into training and validation datasets without getting NaN values
+    # train_size = int(0.8 * len(full_train_dataset))
+    # val_size = len(full_train_dataset) - train_size
+    # train_dataset, val_dataset = random_split(full_train_dataset, [train_size, val_size])
+
+    # Extract group IDs from image IDs
+    groups = [image_id.split("[", 1)[0] for image_id in full_train_dataset.image_ids]
+    train_dataset = []
+    val_dataset = []
+
+    # Determine labels based on the presence of positive pixels in masks
+    labels = []
+    for idx in range(len(full_train_dataset)):
+        _, mask = full_train_dataset[idx]
+        labels.append(int(mask.sum() > 0))
+
+    labels = np.array(labels)
+
+    # Initialize StratifiedGroupKFold
+    sgkf = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+
+    # Perform the split
+    for train_idx, val_idx in sgkf.split(np.zeros(len(labels)), labels, groups):
+        train_dataset = Subset(full_train_dataset, train_idx)
+        val_dataset = Subset(full_train_dataset, val_idx)
+        break  # Use the first split
+
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
