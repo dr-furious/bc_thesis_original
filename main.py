@@ -21,6 +21,10 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_path", type=str, default="./data")
+    parser.add_argument("--train_images_path", type=str, default="train/images")
+    parser.add_argument("--train_masks_path", type=str, default="train/masks")
+    parser.add_argument("--test_image_path", type=str, default="test/images")
+    parser.add_argument("--test_image_path", type=str, default="test/images")
     parser.add_argument("--mask_dir_name", type=str, default="")
     parser.add_argument("--wandb", type=str, default=None)
     parser.add_argument("--wandb_proj_name", type=str, default="segmentation")
@@ -72,8 +76,8 @@ def main():
 
     # Initialize the full training dataset
     full_train_dataset = TILDataset(
-        os.path.join(args.data_path, "train/images"),
-        os.path.join(args.data_path, "train/masks", str(args.mask_dir_name))
+        os.path.join(args.data_path, str(args.train_images_path)),
+        os.path.join(args.data_path, str(args.train_masks_path), str(args.mask_dir_name))
     )
 
     pl.seed_everything(42)
@@ -110,8 +114,8 @@ def main():
 
     # Test dataset
     test_dataset = TILDataset(
-        os.path.join(args.data_path, "test/images"),
-        os.path.join(args.data_path, "test/masks")
+        os.path.join(args.data_path, str(args.test_images_path)),
+        os.path.join(args.data_path, str(args.test_masks_path))
     )
     test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
