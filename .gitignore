@@ -23,5 +23,6 @@ data/raw-test/
 data/processed-test
 outputs/wandb
 outputs/checkpoints
+models/pretrained
 
 # files to ignore

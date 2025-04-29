@@ -33,6 +33,8 @@ def main():
     parser.add_argument("--model_name", type=str, default="Unet")
     parser.add_argument("--encoder_name", type=str, default="resnet34")
     parser.add_argument("--encoder_weights", type=str, default=None)
+    parser.add_argument("--pretrained_ckpt", type=str, default=None)
+    parser.add_argument("--freeze_encoder", type=bool, default=False)
     args = parser.parse_args()
 
     print(os.listdir(args.data_path))
@@ -47,7 +49,7 @@ def main():
     learning_rate = config["learning_rate"]
     early_stop_patience = config["early_stop_patience"]
 
-    if wandb is not None:
+    if args.wandb is not None:
         wandb.login(key=args.wandb)
     else:
         wandb.login()
@@ -65,7 +67,8 @@ def main():
 
     early_stop = EarlyStopping(
         monitor="val/loss",
-        patience=early_stop_patience, mode="min"
+        patience=early_stop_patience,
+        mode="min"
     )
 
     wandb_logger = WandbLogger(
@@ -119,14 +122,27 @@ def main():
     )
     test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
-    # Training
-    model = SegModel(
-        model_name=args.model_name,
-        encoder_name=args.encoder_name,
-        encoder_weights=args.encoder_weights,
-        learning_rate=learning_rate
-    )
+    # If using transfer learning, load the model from provided checkpoint:
+    if args.pretrained_ckpt is not None:
+        print(f"Loading pretrained model from {args.pretrained_ckpt}")
+        model = SegModel.load_from_checkpoint(args.pretrained_ckpt)
+    else:
+        # Create a new model
+        model = SegModel(
+            model_name=args.model_name,
+            encoder_name=args.encoder_name,
+            encoder_weights=args.encoder_weights,
+            learning_rate=learning_rate
+        )
 
+    # Freeze the encoder
+    if args.freeze_encoder is True and (args.encoder_weights is not None or args.pretrained_ckpt is not None):
+        print("Freezing encoder...")
+        for name, param in model.model.encoder.named_parameters():
+            param.requires_grad = False
+        print("Encoder is frozen.")
+
+    # Training
     trainer = pl.Trainer(
         default_root_dir="outputs/",
         max_epochs=max_epochs,
