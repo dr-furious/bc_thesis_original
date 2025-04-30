@@ -1,10 +1,13 @@
 import math
 import os
 import random
+import re
+import shutil
 from enum import Enum
 from typing import List, Tuple, Dict, Union
 import cv2
 import numpy as np
+from sklearn.model_selection import GroupKFold
 from torchvision import transforms
 import torchstain
 
@@ -17,6 +20,28 @@ def _compute_stride(dimension, patch_size):
     num_patches = math.ceil((dimension - patch_size) / patch_size) + 1
     stride = (dimension - patch_size) / (num_patches - 1)
     return int(stride)
+
+
+def k_split(source_dir: str, out_dir: str, k: int = 3) -> None:
+    image_dir = os.path.join(source_dir, "images")
+    image_paths = sorted([os.path.join(image_dir, img_name) for img_name in os.listdir(image_dir) if img_name.endswith('.png')])
+
+    case_ids = [re.match(r"(\d+)_", os.path.basename(path)).group(1) for path in image_paths]
+    groups = [int(pid) for pid in case_ids]
+
+    gkf = GroupKFold(n_splits=k)
+    for fold_idx, (train_idx, val_idx) in enumerate(gkf.split(image_paths, groups=groups)):
+        # Create directories for this fold
+        fold_dir = os.path.join(out_dir, f"fold_{fold_idx}")
+        os.makedirs(os.path.join(fold_dir, "images"), exist_ok=True)
+        os.makedirs(os.path.join(fold_dir, "masks"), exist_ok=True)
+
+        # Copy validation images and corresponding masks to the fold directory
+        for idx in val_idx:
+            image_path = image_paths[idx]
+            mask_path = image_path.replace("images", "masks")
+            shutil.copy(image_path, os.path.join(fold_dir, "images", os.path.basename(image_path)))
+            shutil.copy(mask_path, os.path.join(fold_dir, "masks", os.path.basename(mask_path)))
 
 
 class InplaceOption(Enum):
@@ -243,7 +268,6 @@ class ImageProcessor:
                 cv2.imwrite(os.path.join(mask_out_dir, rotated_name), rotated_mask)
                 if inplace:
                     self.images[i] = (rotated_img, name)
-
 
 
 

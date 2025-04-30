@@ -35,6 +35,7 @@ def main():
     parser.add_argument("--encoder_weights", type=str, default=None)
     parser.add_argument("--pretrained_ckpt", type=str, default=None)
     parser.add_argument("--freeze_encoder", type=bool, default=False)
+    parser.add_argument("--eval_only", type=bool, default=False)
     args = parser.parse_args()
 
     print(os.listdir(args.data_path))
@@ -151,12 +152,18 @@ def main():
         callbacks=[checkpoint_callback, early_stop],
     )
 
-    trainer.fit(model, train_loader, val_loader)
-
-    # Evaluation
-    best_model_path = checkpoint_callback.best_model_path
-    best_model = SegModel.load_from_checkpoint(best_model_path)
-    test_results = trainer.test(best_model, dataloaders=test_loader)
+    if args.eval_only is True:
+        if args.pretrained_ckpt is None:
+            raise ValueError("Please provide pretrained model.")
+        print("Evaluating model...")
+        model = SegModel.load_from_checkpoint(args.pretrained_ckpt)
+        test_results = trainer.test(model, dataloaders=test_loader)
+    else:
+        trainer.fit(model, train_loader, val_loader)
+        # Evaluation
+        best_model_path = checkpoint_callback.best_model_path
+        best_model = SegModel.load_from_checkpoint(best_model_path)
+        test_results = trainer.test(best_model, dataloaders=test_loader)
 
     with open("outputs/test_results.json", "w") as f:
         json.dump(test_results, f, indent=4)

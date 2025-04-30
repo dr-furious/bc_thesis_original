@@ -126,6 +126,11 @@ class SegModel(pl.LightningModule):
         self.logger.experiment.log({f"{stage}/examples": logged_images})
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
+        trainable_p = filter(lambda p: p.requires_grad, self.parameters())
+        optimizer = torch.optim.Adam(
+            trainable_p,
+            lr=self.hparams.learning_rate
+        )
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
         return [optimizer], [scheduler]
+
