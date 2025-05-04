@@ -1,6 +1,10 @@
+import os.path
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+
+from src.utils import load_json
 
 
 class Sample:
@@ -72,3 +76,40 @@ class Sample:
             plt.figure(figsize=(4, 4), dpi=80, facecolor="w", edgecolor="k")
             plt.imshow(display_img)
             plt.show()
+
+    def save_overlay(self, out_dir: str) -> None:
+        name = os.path.basename(self.img_path)
+
+        # Save the original image
+        cv2.imwrite(os.path.join(out_dir, f"image_{name}"), self.img)
+
+        self.mask[self.mask == 1] = 255
+        # Save the mask
+        cv2.imwrite(os.path.join(out_dir, f"mask_{name}"), self.mask)
+
+        self.mask = cv2.cvtColor(self.mask, cv2.COLOR_GRAY2RGB)
+        self.mask[np.all(self.mask == [255, 255, 255], axis=-1)] = [15, 255, 0]
+        overlay = cv2.addWeighted(self.img, 0.8, self.mask, 0.2, 0)
+        # Save overlaid image and mask
+        cv2.imwrite(os.path.join(out_dir, f"overlay_{name}"), overlay)
+
+    def save_with_bbox(self, out_dir: str, json_path: str) -> None:
+        json_data = load_json(json_path)
+        images = json_data["images"]
+        name = os.path.basename(self.img_path)
+        for image in images:
+            image_name = image["file_name"]
+            image_id = image["id"]
+            if image_name[2:] != name:
+                continue
+            out_path = os.path.join(out_dir, f"bbox_{name}")
+            rois = [ann["bbox"] for ann in json_data["annotations"] if ann["image_id"] == image_id]
+            # Draw each bounding box
+            for (x, y, width, height) in rois:
+                top_left = (int(x), int(y))
+                bottom_right = (int(x + width), int(y + height))
+                color = (0, 255, 0)  # BGR → green
+                thickness = 1  # thin line
+                self.img = cv2.rectangle(self.img, top_left, bottom_right, color, thickness)
+            cv2.imwrite(out_path, self.img)
+
