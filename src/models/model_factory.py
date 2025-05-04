@@ -94,11 +94,11 @@ class SegModel(pl.LightningModule):
         masks = masks.cpu().numpy()
         preds = preds.cpu().numpy()
 
-        num_images = min(6, images.shape[0])  # Log up to 4 images
+        num_images = min(6, images.shape[0])  # Log max 6 images (for wandb performance)
         logged_images = []
         for i in range(num_images):
             img = images[i].transpose(1, 2, 0)  # Convert from CHW to HWC
-            mask = masks[i][0]  # Assuming masks have shape (B, 1, H, W)
+            mask = masks[i][0]  # Masks with shape (B, 1, H, W)
             pred = preds[i][0]
 
             # Convert to uint8

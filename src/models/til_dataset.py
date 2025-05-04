@@ -25,9 +25,11 @@ class TILDataset(Dataset):
 
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # Convert RGB image to tensor
         image = torch.from_numpy(image).permute(2, 0, 1).float()
 
         mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        # Convert greyscale image to tensor
         mask = torch.from_numpy(mask).unsqueeze(0).float()
 
         return image, mask
