@@ -17,6 +17,11 @@ __pycache__/
 .python-version
 
 # directories to ignore:
+example_data/raw_train
+example_data/raw_test
+example_data/processed_train
+example_data/processed_test
+
 data/raw-train/
 data/processed-train/
 data/raw-test/
