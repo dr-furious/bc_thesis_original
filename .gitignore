@@ -17,10 +17,12 @@ __pycache__/
 .python-version
 
 # directories to ignore:
-example_data/raw_tiger
-example_data/raw_tnbc
-example_data/processed_tiger
-example_data/processed_tnbc
+example_data/processed_tiger/*
+example_data/processed_tnbc/*
+
+# keep this file in
+!example_data/processed_tiger/.gitkeep
+!example_data/processed_tnbc/.gitkeep
 
 data/raw-train/
 data/processed-train/
@@ -29,6 +31,8 @@ data/processed-test
 outputs/wandb
 outputs/checkpoints
 models/pretrained
+
+outputs/
 
 # files to ignore
 configs/azure_connect.json
