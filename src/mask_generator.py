@@ -91,6 +91,8 @@ class MaskGenerator:
             image_name = image["file_name"]
             image_path = os.path.join(self.images_dir, image_name)
             rois = [ann["bbox"] for ann in data["annotations"] if ann["image_id"] == image_id]
+            if not os.path.exists(image_path):
+                continue
             roi_images = _cut(image_path=image_path, regions=rois, out_dir=out_dir)
 
             # Save all cut rois per single image

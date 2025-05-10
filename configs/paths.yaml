@@ -1,27 +1,38 @@
 # Root data folder:
 root_data_dir:         "./example_data"
 
+tiger_sample_image:    "TCGA-A7-A0CE-01Z-00-DX1.E67322FB-ED25-4B85-B3B0-2B8BD277BB4A_[29474, 9618, 29624, 9766].png"
+tnbc_sample_image:     "09_4.png"
+
 images:                "images"
 masks:                 "masks"
 folds:                 "folds"
 scaled:                "scaled"
 patches:               "patches"
-tiger_annotations:     "tiger_coco.json"
+tiger_annotations:     "tiger-coco.json"
 tnbc_binary_masks:     "binary_masks"
 
-raw_train:              "raw_train"
-raw_test:               "raw_test"
-processed_train:        "processed_train"
-processed_test:         "processed_test"
+raw_tiger:              "raw_tiger"
+raw_tnbc:               "raw_tnbc"
+processed_tiger:        "processed_tiger"
+processed_tnbc:         "processed_tnbc"
 
 source_dirs:
-  raw_eq:              "eq"
+  raw:                 "raw"
+  raw_eq:              "raw_eq"
   normalized:          "normalized"
   normalized_eq:       "normalized_eq"
   hematoxylin:         "hematoxylin"
   hematoxylin_eq:      "hematoxylin_eq"
 
+cv_pipelines:
+  otsu:                "otsu"
+  adaptive:            "adaptive"
+  blur_otsu:           "blur_otsu"
+  blur_adaptive:       "blur_adaptive"
+
 pseudo_mask_dirs:
+  # These bellow are combination of <source_dir>_<cv_pipeline>
   all:
     - "hematoxylin_adaptive"
     - "hematoxylin_otsu"
@@ -47,6 +58,8 @@ pseudo_mask_dirs:
     - "raw_eq_otsu"
     - "raw_eq_blur_adaptive"
     - "raw_eq_blur_otsu"
+
+  # These can be changed but must be subset of the 'pseudo_mask_dirs/all'
   best_25:
     - "normalized_eq_adaptive"
     - "normalized_eq_otsu"
@@ -70,12 +83,13 @@ pseudo_mask_dirs:
     - "raw_eq_otsu"
     - "normalized_otsu"
     # + best_50 list
+
   fused:
-    - "fused_all"
-    - "fused_best_25"
-    - "fused_best_50"
-    - "fused_best_75"
-    - "fused_leave_0_out"
-    - "fused_leave_1_out"
-    - "fused_leave_2_out"
-    - "fused_leave_3_out"
+    fused_all:          "fused_all"
+    fused_best_25:      "fused_best_25"
+    fused_best_50:      "fused_best_50"
+    fused_best_75:      "fused_best_75"
+    fused_leave_0_out:  "fused_leave_0_out"
+    fused_leave_1_out:  "fused_leave_1_out"
+    fused_leave_2_out:  "fused_leave_2_out"
+    fused_leave_3_out:  "fused_leave_3_out"
