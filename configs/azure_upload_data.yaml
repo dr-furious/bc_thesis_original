@@ -1,0 +1,4 @@
+src_dir: "./../example_data"                 # Local folder
+target_path: "datasets/sivak-tiger/thrash"   # Destination folder
+overwrite: false                             # Whether to overwrite existing data
+show_progress: false

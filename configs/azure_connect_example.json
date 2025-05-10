@@ -1,0 +1,5 @@
+{
+    "subscription_id": "hash-id",
+    "resource_group": "group-name",
+    "workspace_name": "workspace-name"
+}

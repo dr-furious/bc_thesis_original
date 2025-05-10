@@ -31,3 +31,4 @@ outputs/checkpoints
 models/pretrained
 
 # files to ignore
+configs/azure_connect.json
