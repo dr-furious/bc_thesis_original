@@ -83,13 +83,12 @@ class Sample:
         # Save the original image
         cv2.imwrite(os.path.join(out_dir, f"image_{name}"), self.img)
 
-        self.mask[self.mask == 1] = 255
         # Save the mask
         cv2.imwrite(os.path.join(out_dir, f"mask_{name}"), self.mask)
 
-        self.mask = cv2.cvtColor(self.mask, cv2.COLOR_GRAY2RGB)
-        self.mask[np.all(self.mask == [255, 255, 255], axis=-1)] = [15, 255, 0]
-        overlay = cv2.addWeighted(self.img, 0.8, self.mask, 0.2, 0)
+        out_mask = cv2.cvtColor(self.mask, cv2.COLOR_GRAY2RGB)
+        out_mask[np.all(out_mask == [255, 255, 255], axis=-1)] = [15, 255, 0]
+        overlay = cv2.addWeighted(self.img, 0.8, out_mask, 0.2, 0)
         # Save overlaid image and mask
         cv2.imwrite(os.path.join(out_dir, f"overlay_{name}"), overlay)
 
