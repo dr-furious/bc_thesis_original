@@ -1,13 +1,5 @@
-# File with experiments evaluation
+# Histological Image Processing
 
-## Data preprocessing for training
-
-### Dataset 1 - TIGER
-
-### Dataset 2
-
-## Data preprocessing for masks generation
-
-## Dataset 1 - TIGER
-
-## Experiment 1
+```bash
+python3 main.py --data_path './example_data' --wandb '80d7df7ab330e7fe22301afbab951204c5c0b33a' --train_images_path 'processed_tiger/patches/images' --train_masks_path 'processed_tiger/patches/masks/fused_leave_1_out' --test_images_path 'processed_tnbc/patches/images' --test_masks_path 'processed_tnbc/patches/masks'
+```

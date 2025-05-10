@@ -22,21 +22,17 @@ def load_images(img_dir: str, supported_formats: Tuple[str] = (".jpg", ".jpeg", 
     return images
 
 
-def load_json(json_path: str, mode='r') -> dict:
+def load_json(json_path: str, mode="r") -> dict:
     with open(json_path, mode) as json_file:
         data = json.load(json_file)
     return data
 
 
-def load_yaml(yaml_path: str, mode='r') -> dict:
+def load_yaml(yaml_path: str, mode="r") -> dict:
     with open(yaml_path, mode) as yaml_file:
         data = yaml.safe_load(yaml_file)
     return data
 
 
 def build_paths(base_dir: str, subdirs: List[str]) -> List[str]:
-    """
-    Given a base directory and a list of subdirectory names,
-    return the list of full paths.
-    """
     return [os.path.join(base_dir, name) for name in subdirs]

@@ -1,4 +1,4 @@
-src_dir: "./../example_data"                 # Local folder
-target_path: "datasets/sivak-tiger/thrash"   # Destination folder
-overwrite: false                             # Whether to overwrite existing data
+src_dir: "./../../example_data"                 # Local folder, relative path from execution point
+target_path: "datasets/sivak-tiger/example"     # Destination folder
+overwrite: false                                # Whether to overwrite existing data
 show_progress: false

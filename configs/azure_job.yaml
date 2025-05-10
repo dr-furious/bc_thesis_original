@@ -1,0 +1,32 @@
+# All paths are relative to the folder from which this config is run!
+
+# Data Asset
+dataset:
+  name: "xsivakm1_tiger_segmentation"
+  version: "6"
+
+# Environment
+environment:
+  name: "tiger-segmentation"
+  description: "For segmentation training on TIGER dataset"
+  image: "mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04"
+  conda_file: "./azure_conda.yaml"  # File with specified dependencies to be installed within the container
+
+# Job parameters
+job:
+  code: "../../"  # Project folder - must have main.py!
+  compute: "xsivakm1-24-v100"  # Compute target in Azure
+  experiment_name: "xsivakm1_segmentation"  # The name of the experiment in Azure
+  azure_display_name: "segmentation_training" # The name of the run in Azure
+
+  # All CLI args to pass into main.py
+  args:
+    train_images_path:      "processed_tiger/patches/images"                  # relative path from 'data_path' in /main.py
+    train_masks_path:       "processed_tiger/patches/masks/fused_leave_1_out" # relative path from 'data_path' in /main.py
+    test_images_path:       "processed_tnbc/patches/images"                   # relative path from 'data_path' in /main.py
+    test_masks_path:        "processed_tnbc/patches/masks"                    # relative path from 'data_path' in /main.py
+    wandb:                  "80d7df7ab330e7fe22301afbab951204c5c0b33a"  # wandb key
+    wandb_proj_name:        "segmentation" # wandb project name
+    wandb_run_name:         "run" # wandb run name inside of the project
+    config:                 "./configs/model_train_base.yaml"  # Model config for the training
+

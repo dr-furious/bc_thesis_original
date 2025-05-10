@@ -19,6 +19,7 @@ class ImageStats:
         self.images_dir = images_dir
         self.images = load_images(images_dir, supported_formats)
 
+    # Display stats about images from directory
     def get_image_stats(self, visual: bool = False) -> dict:
         sizes = []
         for image in self.images:
@@ -93,19 +94,21 @@ class ImageStats:
 
         return stats
 
+    # Compute contrast std
     def contrast_std(self) -> np.floating:
         std_devs = [np.std(cv2.cvtColor(img[0], cv2.COLOR_BGR2GRAY)) for img in self.images]
         mean_dev = np.mean(std_devs)
         print(f"Contrast standard deviations: {mean_dev}")
         return mean_dev
 
+    # Compute the michelson contrast
     def michelson_contrast(self) -> np.floating:
         michelson_contrasts = []
         for img in self.images:
             img_gray = cv2.cvtColor(img[0], cv2.COLOR_BGR2GRAY).astype(np.int16)
             img_max = np.max(img_gray)
             img_min = np.min(img_gray)
-            if img_max + img_min != 0:  # Avoid division by zero
+            if img_max + img_min != 0:
                 contrast = np.ptp(img_gray) / (img_max + img_min)
                 michelson_contrasts.append(contrast)
 

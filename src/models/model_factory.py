@@ -41,6 +41,7 @@ class SegModel(pl.LightningModule):
     def forward(self, x):
         return self.model(x)
 
+    # This shared step is used both for training, validation, and testing
     def _shared_step(self, batch, stage: str):
         images, masks = batch
         logits = self(images)

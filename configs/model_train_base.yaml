@@ -1,0 +1,14 @@
+learning_rate: 0.001
+batch_size: 16
+max_epochs: 100
+early_stop_patience: 10
+split_token: "["            # Used to split image name to create groups, the part before token is image identifier
+                            # and since there can be more patches from single image, we do not want one patch to be
+                            # in training, and one in validation dataset
+model_name: "Unet"          # Can be either 'Unet', 'UnetPlusPlus', or 'MAnet'
+encoder_name: "resnet34"    # Can be either 'resnet34' or null
+encoder_weights: "imagenet" # Can be either 'imagenet' or null
+pretrained_ckpt: null       # Path to checkpoint
+freeze_encoder: false       # If the encoder should be frozen during the training
+eval_only: false            # Sets the model to evaluation mode, and it will be only evaluated, not trained.
+                            #   - Model must then be loaded from a checkpoint
