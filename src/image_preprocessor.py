@@ -22,9 +22,10 @@ def _compute_stride(dimension, patch_size):
     return int(stride)
 
 
-def k_split(source_dir: str, out_dir: str, k: int = 3) -> None:
-    image_dir = os.path.join(source_dir, "images")
-    image_paths = sorted([os.path.join(image_dir, img_name) for img_name in os.listdir(image_dir) if img_name.endswith('.png')])
+def k_split(source_dir: str, out_dir: str, k: int = 3, images_dir="images", masks_dir="masks") -> None:
+    image_dir = os.path.join(source_dir, images_dir)
+    image_paths = sorted(
+        [os.path.join(image_dir, img_name) for img_name in os.listdir(image_dir) if img_name.endswith('.png')])
 
     case_ids = [re.match(r"(\d+)_", os.path.basename(path)).group(1) for path in image_paths]
     groups = [int(pid) for pid in case_ids]
@@ -33,15 +34,15 @@ def k_split(source_dir: str, out_dir: str, k: int = 3) -> None:
     for fold_idx, (train_idx, val_idx) in enumerate(gkf.split(image_paths, groups=groups)):
         # Create directories for this fold
         fold_dir = os.path.join(out_dir, f"fold_{fold_idx}")
-        os.makedirs(os.path.join(fold_dir, "images"), exist_ok=True)
-        os.makedirs(os.path.join(fold_dir, "masks"), exist_ok=True)
+        os.makedirs(os.path.join(fold_dir, images_dir), exist_ok=True)
+        os.makedirs(os.path.join(fold_dir, masks_dir), exist_ok=True)
 
         # Copy validation images and corresponding masks to the fold directory
         for idx in val_idx:
             image_path = image_paths[idx]
-            mask_path = image_path.replace("images", "masks")
-            shutil.copy(image_path, os.path.join(fold_dir, "images", os.path.basename(image_path)))
-            shutil.copy(mask_path, os.path.join(fold_dir, "masks", os.path.basename(mask_path)))
+            mask_path = image_path.replace(images_dir, masks_dir)
+            shutil.copy(image_path, os.path.join(fold_dir, images_dir, os.path.basename(image_path)))
+            shutil.copy(mask_path, os.path.join(fold_dir, masks_dir, os.path.basename(mask_path)))
 
 
 class InplaceOption(Enum):
@@ -63,7 +64,7 @@ class ImageProcessor:
         self.images_dir = images_dir
         self.images = load_images(images_dir, supported_formats)
 
-    def set_images_from_dir(self,  images_dir: str, supported_formats: Tuple[str] = (".jpg", ".jpeg", ".png")) -> None:
+    def set_images_from_dir(self, images_dir: str, supported_formats: Tuple[str] = (".jpg", ".jpeg", ".png")) -> None:
         self.images_dir = images_dir
         self.images = load_images(images_dir, supported_formats)
 
@@ -72,7 +73,8 @@ class ImageProcessor:
             print("The number of images to select is greater than the total number of images.")
         return random.sample(self.images, num)
 
-    def equalize_hist(self, inplace: bool = False, out_dir: str | None = None) \
+    def equalize_hist(self, inplace: bool = False,
+                      out_dir: str | None = None) \
             -> List[Dict[str, Union[str, np.ndarray]]]:
 
         result = []
@@ -100,16 +102,19 @@ class ImageProcessor:
     def normalize(self, target_images: List[Tuple[np.ndarray, str]],
                   inplace: bool = False,
                   inplace_option: InplaceOption = InplaceOption.NORM,
-                  out_dir: str | None = None) -> List[Dict[str, Union[str, np.ndarray]]]:
+                  out_dir: str | None = None,
+                  norm_dir_name: str = "normalized",
+                  hematoxylin_dir_name: str = "hematoxylin",
+                  eosin_dir_name: str = "eosin") -> List[Dict[str, Union[str, np.ndarray]]]:
 
         normalized_dir = None
         hematoxylin_dir = None
         eosin_dir = None
         if out_dir is not None:
             # Make dirs for norm, hematoxylin and eosin
-            normalized_dir = os.path.join(out_dir, "normalized")
-            hematoxylin_dir = os.path.join(out_dir, "hematoxylin")
-            eosin_dir = os.path.join(out_dir, "eosin")
+            normalized_dir = os.path.join(out_dir, norm_dir_name)
+            hematoxylin_dir = os.path.join(out_dir, hematoxylin_dir_name)
+            eosin_dir = os.path.join(out_dir, eosin_dir_name)
 
             os.makedirs(normalized_dir, exist_ok=True)
             os.makedirs(hematoxylin_dir, exist_ok=True)
@@ -167,7 +172,8 @@ class ImageProcessor:
             self.images = norm_images
         return result
 
-    def extract_patches(self, masks_dirs: List[str], out_dir: str, patch_size=128, pad=True) -> None:
+    def extract_patches(self, masks_dirs: List[str], out_dir: str, patch_size=128, pad=True,
+                        images_dir="images", masks_dir_name="masks") -> None:
         for image in self.images:
             img, name = image
             name = os.path.splitext(os.path.basename(name))[0]
@@ -196,7 +202,7 @@ class ImageProcessor:
             for y, x in patch_coords:
                 img_patch = img[y:y + patch_size, x:x + patch_size]
                 patch_name = f"{name}_({y}_{x}).png"
-                img_out_path = os.path.join(out_dir, "images", patch_name)
+                img_out_path = os.path.join(out_dir, images_dir, patch_name)
                 os.makedirs(os.path.dirname(img_out_path), exist_ok=True)
                 cv2.imwrite(img_out_path, img_patch)
 
@@ -212,9 +218,9 @@ class ImageProcessor:
                 for y, x in patch_coords:
                     mask_patch = mask[y:y + patch_size, x:x + patch_size]
                     patch_name = f"{name}_({y}_{x}).png"
-                    mask_out_path = os.path.join(out_dir, "masks", mask_subdir, patch_name)
+                    mask_out_path = os.path.join(out_dir, masks_dir_name, mask_subdir, patch_name)
                     if len(masks_dirs) == 1:
-                        mask_out_path = os.path.join(out_dir, "masks", patch_name)
+                        mask_out_path = os.path.join(out_dir, masks_dir_name, patch_name)
                     os.makedirs(os.path.dirname(mask_out_path), exist_ok=True)
                     cv2.imwrite(mask_out_path, mask_patch)
 
@@ -229,11 +235,12 @@ class ImageProcessor:
 
             cv2.imwrite(os.path.join(out_dir, name), mask)
 
-    def scale(self, masks_dirs: List[str], out_dir: str, factor: float = 0.5, inplace: bool = False) -> None:
+    def scale(self, masks_dirs: List[str], out_dir: str, factor: float = 0.5, inplace: bool = False,
+              images_dir="images", masks_dir_name="masks") -> None:
         for i, image in enumerate(self.images):
             img, name = image
             img_scaled = cv2.resize(img, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_CUBIC)
-            img_out_path = os.path.join(out_dir, "images", name)
+            img_out_path = os.path.join(out_dir, images_dir, name)
             os.makedirs(os.path.dirname(img_out_path), exist_ok=True)
             cv2.imwrite(img_out_path, img_scaled)
             if inplace:
@@ -243,32 +250,8 @@ class ImageProcessor:
                 mask_path = os.path.join(masks_dir, name)
                 mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
                 mask_scaled = cv2.resize(mask, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_NEAREST)
-                mask_out_path = os.path.join(out_dir, "masks", os.path.basename(masks_dir), name)
+                mask_out_path = os.path.join(out_dir, masks_dir_name, os.path.basename(masks_dir), name)
                 if len(masks_dirs) == 1:
-                    mask_out_path = os.path.join(out_dir, "masks", name)
+                    mask_out_path = os.path.join(out_dir, masks_dir_name, name)
                 os.makedirs(os.path.dirname(mask_out_path), exist_ok=True)
                 cv2.imwrite(mask_out_path, mask_scaled)
-
-    def rotate(self, masks_dir: str, out_dir: str, degrees: List[int], inplace: bool = False) -> None:
-        for i, record in enumerate(self.images):
-            img, name = record
-            mask_path = os.path.join(masks_dir, name)
-            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-            for degree in degrees:
-                M = cv2.getRotationMatrix2D((img.shape[1] / 2, img.shape[0] / 2), degree, 1)
-                rotated_img = cv2.warpAffine(img, M, (img.shape[1], img.shape[0]))
-                rotated_mask = cv2.warpAffine(mask, M, (mask.shape[1], mask.shape[0]), flags=cv2.INTER_NEAREST)
-                rotated_name = os.path.splitext(os.path.basename(name))[0]
-                rotated_name = f"{rotated_name}_{degree}.png"
-                img_out_dir = os.path.join(out_dir, "images")
-                mask_out_dir = os.path.join(out_dir, "masks")
-                os.makedirs(img_out_dir, exist_ok=True)
-                os.makedirs(mask_out_dir, exist_ok=True)
-                cv2.imwrite(os.path.join(img_out_dir, rotated_name), rotated_img)
-                cv2.imwrite(os.path.join(mask_out_dir, rotated_name), rotated_mask)
-                if inplace:
-                    self.images[i] = (rotated_img, name)
-
-
-
-
