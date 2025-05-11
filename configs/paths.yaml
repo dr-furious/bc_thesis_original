@@ -3,6 +3,7 @@ root_data_dir:         "./example_data"
 
 tiger_sample_image:    "TCGA-A7-A0CE-01Z-00-DX1.E67322FB-ED25-4B85-B3B0-2B8BD277BB4A_[29474, 9618, 29624, 9766].png"
 tnbc_sample_image:     "09_4.png"
+tnbc_sample_img_patch: "09_4_(0_0).png"
 
 images:                "images"
 masks:                 "masks"
@@ -32,7 +33,7 @@ cv_pipelines:
   blur_adaptive:       "blur_adaptive"
 
 pseudo_mask_dirs:
-  # These bellow are combination of <source_dir>_<cv_pipeline>
+  # These below are combination of <source_dir>_<cv_pipeline>
   all:
     - "hematoxylin_adaptive"
     - "hematoxylin_otsu"

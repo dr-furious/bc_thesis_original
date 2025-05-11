@@ -16,17 +16,24 @@ class Sample:
     def __init__(self, img_path: str | None = None, mask_path: str | None = None) -> None:
         self.img_path = img_path
         self.mask_path = mask_path
-        # Try loading the image
-        try:
-            self.img = cv2.imread(self.img_path)
-        except Exception as e:
-            print(f"Error occurred while opening the image: {e}")
+        if img_path is not None:
+            # Try loading the image
+            try:
+                self.img = cv2.imread(self.img_path)
+            except Exception as e:
+                print(f"Error occurred while opening the image: {e}")
+        if mask_path is not None:
+            try:
+                self.mask = cv2.imread(self.mask_path, cv2.IMREAD_GRAYSCALE)
+                self.mask[self.mask == 1] = 255
+            except Exception as e:
+                print(f"Error occurred while opening the mask: {e}")
 
-        try:
-            self.mask = cv2.imread(self.mask_path, cv2.IMREAD_GRAYSCALE)
-            self.mask[self.mask == 1] = 255
-        except Exception as e:
-            print(f"Error occurred while opening the mask: {e}")
+    def set_image(self, image: np.ndarray) -> None:
+        self.img = image
+
+    def set_mask(self, mask: np.ndarray) -> None:
+        self.mask = mask
 
     def info(self):
         print(f"Image path: {self.img_path}")
