@@ -10,6 +10,25 @@
 **Place of elaboration:** Institute of Computer Engineering and Applied Informatics, FIIT STU, Bratislava
 
 ## Table of contents
+  * [Project's folder structure](#projects-folder-structure)
+  * [Descriptions of folders and files](#descriptions-of-folders-and-files)
+    + [`root` directory files](#root-directory-files)
+    + [`config` directory files](#config-directory-files)
+    + [`data` and `example_data` directories](#data-and-example_data-directories)
+    + [`models` directory](#models-directory)
+    + [`src/azure` directory](#srcazure-directory)
+    + [`src/models` directory](#srcmodels-directory)
+    + [`src/*.py` files](#srcpy-files)
+  * [Installation guide](#installation-guide)
+    + [Prerequisites](#prerequisites)
+    + [1. Clone the repository](#1-clone-the-repository)
+    + [2. Set up the Python environment](#2-set-up-the-python-environment)
+    + [3. Install dependencies](#3-install-dependencies)
+  * [How to run the Demo](#how-to-run-the-demo)
+    + [1. Preprocessing and pseudo-mask creation](#1-preprocessing-and-pseudo-mask-creation)
+    + [2.A Training on Azure](#2a-training-on-azure)
+    + [2.B Training locally](#2b-training-locally)
+    + [Inference](#inference)
 
 
 ## Project's folder structure
@@ -166,6 +185,7 @@ git clone <repository-name>
 cd <cloned-repository-name>
 ```
 Alternatively, you can download the `.zip` file of this project, unpack it, and open terminal within it.
+
 
 ### 2. Set up the Python environment 
 Set up the virtual environment using `pip` (or create Conda environment, but we will be using `pip`).
