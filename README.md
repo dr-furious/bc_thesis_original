@@ -28,7 +28,7 @@
     + [1. Preprocessing and pseudo-mask creation](#1-preprocessing-and-pseudo-mask-creation)
     + [2.A Training on Azure](#2a-training-on-azure)
     + [2.B Training locally](#2b-training-locally)
-    + [Inference](#inference)
+    + [3. Inference](#3-inference)
 
 
 ## Project's folder structure
