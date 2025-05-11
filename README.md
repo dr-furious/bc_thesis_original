@@ -248,5 +248,5 @@ Follow these steps:
 3. During the training you can see and monitor the whole process in your Weights and Biases account.
 4. Once the training finished, you will notice that a new `/outputs` directory was created. This contains both the trained model in the `/outputs/checkpoints/best.ckpt` file and the raw Weights and Biases logs in the `outputs/wandb` folder. Furthermore, it contains a `outputs/test_results.json` with the evaluation metrics from the evaluation phase.
    
-### Inference
+### 3. Inference
 In case you wish to see how the model during the inference, navigate into the [inference.ipynb](./src/models/inference.ipynb). Notice that this notebook is run as well, feel free to examine it and then clear the outputs (to avoid any confusion). You **will need to** input the path to the trained model `.ckpt` file, as we do **not** provide a trained model in the demo. Run the notebook and see the results!
