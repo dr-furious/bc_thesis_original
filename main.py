@@ -9,7 +9,7 @@ import os
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from torch.utils.data import DataLoader, random_split, Subset
+from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import StratifiedGroupKFold
 
 from src.models.til_dataset import TILDataset
