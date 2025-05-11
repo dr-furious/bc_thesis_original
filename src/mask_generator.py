@@ -144,12 +144,14 @@ class MaskGenerator:
                 roi = operation(roi, roi_copy)
                 cut["image"] = roi
 
+    # Applies median blur to the image
     def _blur(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             return cv2.medianBlur(roi, 3)
 
         self._apply_operation_to_roi(do)
 
+    # Applies Otsu thresholding to the image
     def _otsu_thresholding(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             img_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
@@ -159,6 +161,7 @@ class MaskGenerator:
 
         self._apply_operation_to_roi(do)
 
+    # Applies adaptive thresholding to the image
     def _adaptive_thresholding(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             img_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
@@ -166,6 +169,7 @@ class MaskGenerator:
 
         self._apply_operation_to_roi(do)
 
+    # Applies morphological opening to the image
     def _morph_opening(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -173,6 +177,7 @@ class MaskGenerator:
 
         self._apply_operation_to_roi(do)
 
+    # Applies morphological closing to the image
     def _morph_closing(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -180,6 +185,7 @@ class MaskGenerator:
 
         self._apply_operation_to_roi(do)
 
+    # Applies mark-controlled watershed on the image
     def _marked_watershed(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             dist_transform = cv2.distanceTransform(roi, cv2.DIST_L2, 5)
@@ -198,6 +204,7 @@ class MaskGenerator:
 
         self._apply_operation_to_roi(do)
 
+    # Combines the single-cell pseudo-masks into a full-image mask
     def _combine_masks(self) -> None:
         for record in self.image_data:
             image_name, roi_cuts = record["image_name"], record["roi_cuts"]
@@ -207,20 +214,27 @@ class MaskGenerator:
             # print(f"ROIs: {len(roi_cuts)}")
             # print(f"Image name: {image_name}")
 
+            # Create a template for the whole image with zeros only (all background)
             whole_image = np.zeros(original_image.shape[:2], dtype=np.uint8)
             for cut in roi_cuts:
+                # Get the single-cell mask as a correct type and ensure it does not lie outside the image -
+                # if it dies, correct it
                 roi = np.array(cut["image"], dtype=np.uint8)
-                # roi = np.ones(roi.shape[:2])
                 x, y, w, h, roi = _check_bbox(roi=roi,
                                               bbox=(cut["x"], cut["y"], cut["width"], cut["height"]),
                                               image_shape=whole_image.shape)
+                # Create a buffer image since the bitwise or from OpenCV requires the images to be of same size
                 buffer_image = np.zeros_like(whole_image, dtype=np.uint8)
+                # Patch the single-cell roi into the buffer image
                 buffer_image[y:y + h, x:x + w] = roi
+                # Perform bitwise or to merge the buffer image into the final mask
                 whole_image = cv2.bitwise_or(whole_image, buffer_image)
 
             # For the purpose of visualization
             record["roi_cuts"] = [{"image": whole_image, "image_copy": original_image}]
 
+    # Fuses the masks by summing them and appliyng a threshold. All values above this threshold are considered
+    # foreground and labeled with 1, values below are considered background and labeled as 0
     def fuse_masks(self, mask_dirs: List[str], out_dir: str, colorized_dir: str = None, vote_pixel: float = 0.5) -> None:
         image_names = os.listdir(self.images_dir)
 
@@ -238,16 +252,19 @@ class MaskGenerator:
                 mask_path = os.path.join(colorized_dir, name)
                 cv2.imwrite(mask_path, fused_mask*10)
 
+    # Runs the whole pseudo-image generating pipeline, while visualizing images in given range (the last is exclusive)
     def run(self, out_dir: str, operations: List[MaskOperations],
             visualize_range: Tuple[int, int] = (0, 50)) -> None:
-        # Cutting
+        # Cutting the single cell-rois
         self._cut_cells(self.json_file_path)
 
-        # Applying CV operations
+        # Map the CV operations
         operations_pipe = self._get_operation_pipeline(operations=operations)
 
+        # Run the pipeline
         self._generate_masks(operations=operations_pipe)
 
+        # Save the masks
         for record in self.image_data:
             image_name, mask = record["image_name"], record["roi_cuts"][0]["image"]
             mask_path = os.path.join(out_dir, image_name)

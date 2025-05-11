@@ -61,6 +61,7 @@ def main():
     # Create outputs directory
     os.makedirs("outputs", exist_ok=True)
 
+    # Initialize model checkpoint callback
     checkpoint_callback = ModelCheckpoint(
         dirpath="outputs/checkpoints/",
         filename="best",
@@ -69,12 +70,14 @@ def main():
         save_top_k=1,
     )
 
+    # Initialize early stopping callback
     early_stop = EarlyStopping(
         monitor="val/loss",
         patience=early_stop_patience,
         mode="min"
     )
 
+    # Initialize the Weights and Biases Logger
     wandb_logger = WandbLogger(
         project=f"{args.wandb_proj_name}",
         name=args.wandb_run_name,
@@ -87,6 +90,7 @@ def main():
         os.path.join(args.data_path, str(args.train_masks_path))
     )
 
+    # Seed everything for
     pl.seed_everything(42)
 
     # Extract group IDs from image IDs
@@ -111,17 +115,18 @@ def main():
         val_dataset = Subset(full_train_dataset, val_idx)
         break  # Use only the first split
 
-    # Train dataset
+    # Load the train dataset
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    # Validation dataset
+    # Load the validation dataset
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
-    # Test dataset
+    # Initialize the test dataset
     test_dataset = TILDataset(
         os.path.join(args.data_path, str(args.test_images_path)),
         os.path.join(args.data_path, str(args.test_masks_path))
     )
+    # Load the test dataset
     test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
     # If using transfer learning, load the model from provided checkpoint:
@@ -160,12 +165,14 @@ def main():
         model = SegModel.load_from_checkpoint(pretrained_ckpt)
         test_results = trainer.test(model, dataloaders=test_loader)
     else:
+        # Train
         trainer.fit(model, train_loader, val_loader)
         # Evaluation
         best_model_path = checkpoint_callback.best_model_path
         best_model = SegModel.load_from_checkpoint(best_model_path)
         test_results = trainer.test(best_model, dataloaders=test_loader)
 
+    # Save the test results
     with open("outputs/test_results.json", "w") as f:
         json.dump(test_results, f, indent=4)
 
