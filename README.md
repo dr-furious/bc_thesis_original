@@ -86,14 +86,14 @@
 **.amlignore**\
 Here is a list of folders and files that are ignored when a job is submitted to the Azure ML platform. When a job is submitted, Azure takes a snapshot of the directory it is give as the source directory. The files listed in `.amlignore` will be ignored by this operation.
 
-**.gitgnore**\
+**.gitignore**\
 Files to be ignored by the Git versioning system.
 
 **main.ipynb**\
 In this Jupyter notebook, the whole preprocessing, pseudo-mask generating, and pseudo-mask fusing pipeline can be run. It also provides the visualizations of preprocessed images and pseudo-masks. By default, this notebook is run, so you can also see the outputs of each cell. Open the [main.ipynb](./main.ipynb) to see it.
 
 **main.py**\
-This is the main training and evaluation script. It can be run both locally and on the Azure ML platform. See the [Demo]() section to see both possible options.
+This is the main training and evaluation script. It can be run both locally and on the Azure ML platform. See the [Demo](#how-to-run-the-demo) section to see both possible options.
 
 **README.md**\
 This is the document you are currently reading.
@@ -116,10 +116,10 @@ Here are the information about the folder you want to upload to the Azure storag
 Contains the hyperparameters that are used by the model during the training and evaluation. It also contains the option to load the pre-trained model.
 
 **paths.yaml**\
-This file contains all paths, or parts of paths where the images are being stored, created, modified and updated, and from which are loaded during the preprocessing. The whole folder structure for the preprocessing and pseudo-mask creation is created in the [main.ipynb](./main.ipynb) notebook, here also the full paths are build. Note that by default, all file manipulations are performed under the `/example_data/` directory (unless changed in this config). For the [Demo](), we recommend keeping this config file as is. For the real preprocessing, we advise to change the `root_data_dir` value to point to the `/data` directory.
+This file contains all paths, or parts of paths where the images are being stored, created, modified and updated, and from which are loaded during the preprocessing. The whole folder structure for the preprocessing and pseudo-mask creation is created in the [main.ipynb](./main.ipynb) notebook, here also the full paths are build. Note that by default, all file manipulations are performed under the `/example_data/` directory (unless changed in this config). For the [Demo](#how-to-run-the-demo), we recommend keeping this config file as is. For the real preprocessing, we advise to change the `root_data_dir` value to point to the `/data` directory.
 
 ### `data` and `example_data` directories
-The `data` directory contains four main subdirectories. Here the images and annotations of the respective datasets reside ([TIGER]() and [TNBC]() datasets). The `/data/raw_*` folders contain the raw images and annotations (bounding box for TIGER - in the [COCO JSON]() format, PNG masks for TNBC). The `/data/preprocessed_*` directories contain more subdirectories that are created during the run of the [main.ipynb](./main.ipynb) notebook. The most important ones are:
+The `data` directory contains four main subdirectories. Here the images and annotations of the respective datasets reside ([TIGER](https://tiger.grand-challenge.org/Data/) and [TNBC](https://zenodo.org/records/3552674) datasets). The `/data/raw_*` folders contain the raw images and annotations (bounding box for TIGER - in the [COCO JSON]() format, PNG masks for TNBC). The `/data/preprocessed_*` directories contain more subdirectories that are created during the run of the [main.ipynb](./main.ipynb) notebook. The most important ones are:
 
 - `/data/preprocessed_*/patches/images` which contains the 128x128 normalized image patches
 - `/data/preprocessed_*/patches/masks` which contains the 128x128 mask (or pseudo-mask) patches
@@ -127,7 +127,7 @@ The `data` directory contains four main subdirectories. Here the images and anno
 
 Note that this directory is meant to be used for real preprocessing, and you need to put here the correct images and annotations yourself. 
 
-The `/example_data` directory follows the exact same structure, but already contains 10 example images from the TIGER dataset in the `/data/raw_tiger/images` subdirectory,  the `tiger-coco.json` file with the TIGER bounding box annotations in the  `/data/raw_tiger` subdirectory, and 4 images from the TNBC dataset in the `/data/raw_tnbc/images` subdirectory and their corresponding masks in the `/data/raw_tnbc/masks` subdirectory. This directory is by default listed as the `root_data_dir` in the `/configs/path.yaml` file, so in order to run the [Demo]() you do not need to change anything in the `/configs/path.yaml` file.
+The `/example_data` directory follows the exact same structure, but already contains 10 example images from the TIGER dataset in the `/data/raw_tiger/images` subdirectory,  the `tiger-coco.json` file with the TIGER bounding box annotations in the  `/data/raw_tiger` subdirectory, and 4 images from the TNBC dataset in the `/data/raw_tnbc/images` subdirectory and their corresponding masks in the `/data/raw_tnbc/masks` subdirectory. This directory is by default listed as the `root_data_dir` in the `/configs/path.yaml` file, so in order to run the [Demo](#how-to-run-the-demo) you do not need to change anything in the `/configs/path.yaml` file.
 
 ### `models` directory
 Here the models that you wish to save and use for future fine-tuning or reference should be place. We do not include any pre-trained model here, since the `.ckpt` files are around 300MB in size.
@@ -210,7 +210,7 @@ pip install -r requirements.txt
 ```
 
 ## How to run the Demo
-Here we present a way how to run the demo version (using the demo data placed in the `/example_data` folder). Be aware of the fact, that since we only have 10 training images and 4 testing images in this demo, the model performance will be poor. This is just to showcase how the project works. To download full datasets, visit the [Grand Challenge - TIGER]() challenge for the TIGER dataset and the [Zenodo - TNBC]() for the TNBC datasets. Also note that our project works with the PNG images only.
+Here we present a way how to run the demo version (using the demo data placed in the `/example_data` folder). Be aware of the fact, that since we only have 10 training images and 4 testing images in this demo, the model performance will be poor. This is just to showcase how the project works. To download full datasets, visit the [Grand Challenge - TIGER](https://tiger.grand-challenge.org/Data/) challenge for the TIGER dataset and the [Zenodo - TNBC](https://zenodo.org/records/3552674) for the TNBC datasets. Also note that our project works with the PNG images only.
 
 ### 1. Preprocessing and pseudo-mask creation
 1. Navigate into the [main.ipynb](./main.ipynb) Jupyter notebook. You will notice that the notebook is already run (for the demonstration). Feel free to examine it before trying to run anything. 
@@ -224,12 +224,12 @@ Here we describe the necessary steps that are required in order to be able to tr
 1. Ensure you have access to an Azure ML workspace and all the required information. Fill them into the `/configs/azure_connect_example.json` configuration file.
 2. Ensure that the information in the `/configs/azure_upload_data.yaml` configuration file is correct. **You will need** to input the correct `target_path` as this is **not** provided by us!
 3. Then navigate into the [azure_upload_data.ipynb](./src/azure/azure_upload_data.ipynb) and run it cell by cell. Be especially careful with the local and remote directory paths. The contents of the local directory will be copied into the remote directory.
-4. After the data has been uploaded, you will need to create the Azure Data Asset. See the [official Azure documentation]() how to do it.
-5. Then you will need to create an Azure compute instance. See this [official Azure documentation]() for precise instructions.
+4. After the data has been uploaded, you will need to create the Azure Data Asset. See the [official Azure documentation](https://learn.microsoft.com/en-us/azure/machine-learning/how-to-create-data-assets) how to do it.
+5. Then you will need to create an Azure compute instance. See this [official Azure documentation](https://learn.microsoft.com/en-us/azure/machine-learning/how-to-create-compute-instance) for precise instructions.
 6. Next, you will need to modify `/configs/azure_job.yaml` file, as we cannot provide defaults for certain variables:
    - See the `dataset` top-level key. You need to input the `name` of the Data Asset and its `version` you created in Step 4.
    - See the `job` top-level key. You need to change the `job.compute` to have the name of the compute instance target you created in Step 5.
-   - See the `jobs.args.wandb` key. You will need to input your Weights and Biases key, so the training and evaluation process can be monitored. See the [official guide]() how to get the key.
+   - See the `jobs.args.wandb` key. You will need to input your Weights and Biases key, so the training and evaluation process can be monitored. See the [official guide](https://docs.wandb.ai/support/find_api_key/) how to get the key.
 7. _(Optional)_ If you wish, you can try to change the model parameters, you can do so in the `/configs/model_train_base.yaml` file, but this step is optional.
 8. Now navigate into the [azure_train.ipynb](./src/azure/azure_train.ipynb) and follow the instructions within it to submit the training and evaluation job to the Azure ML platform.
 9. During the training you can see and monitor the whole process in your Weights and Biases account.
@@ -241,7 +241,7 @@ This options presents a way how to run the training and evaluation locally. Note
 
 Follow these steps:
 1. _(Optional)_ If you wish, you can try to change the model parameters, you can do so in the `/configs/model_train_base.yaml` file, but this step is optional.
-2. Run the `main.py` script. Be sure to input your correct Weights and Biases key. See the [official guide]() how to get the key.
+2. Run the `main.py` script. Be sure to input your correct Weights and Biases key. See the [official guide](https://docs.wandb.ai/support/find_api_key/) how to get the key.
     ```bash
     python3 main.py --data_path './example_data' --wandb '<your-wandb-key>' --train_images_path 'processed_tiger/patches/images' --train_masks_path 'processed_tiger/patches/masks/fused_leave_1_out' --test_images_path 'processed_tnbc/patches/images' --test_masks_path 'processed_tnbc/patches/masks'
     ```
