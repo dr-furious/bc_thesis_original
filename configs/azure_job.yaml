@@ -2,8 +2,8 @@
 
 # Data Asset
 dataset:
-  name: "xsivakm1_tiger_segmentation"
-  version: "6"
+  name: "<your-dataset-name>"
+  version: "<your-dataset-version"
 
 # Environment
 environment:
@@ -14,9 +14,9 @@ environment:
 
 # Job parameters
 job:
-  code: "../../"  # Project folder - must have main.py!
-  compute: "xsivakm1-24-v100"  # Compute target in Azure
-  experiment_name: "xsivakm1_segmentation"  # The name of the experiment in Azure
+  code: "../../"                              # Project folder - must have main.py!
+  compute: "<your-compute-target>"            # Compute target in Azure
+  experiment_name: "xsivakm1_segmentation"    # The name of the experiment in Azure
   azure_display_name: "segmentation_training" # The name of the run in Azure
 
   # All CLI args to pass into main.py
@@ -25,8 +25,8 @@ job:
     train_masks_path:       "processed_tiger/patches/masks/fused_leave_1_out" # relative path from 'data_path' in /main.py
     test_images_path:       "processed_tnbc/patches/images"                   # relative path from 'data_path' in /main.py
     test_masks_path:        "processed_tnbc/patches/masks"                    # relative path from 'data_path' in /main.py
-    wandb:                  "80d7df7ab330e7fe22301afbab951204c5c0b33a"  # wandb key
-    wandb_proj_name:        "segmentation" # wandb project name
-    wandb_run_name:         "run" # wandb run name inside of the project
-    config:                 "./configs/model_train_base.yaml"  # Model config for the training
+    wandb:                  "<your-wandb-key>"                                # wandb key
+    wandb_proj_name:        "segmentation"                                    # wandb project name
+    wandb_run_name:         "run"                                             # wandb run name inside the project
+    config:                 "./configs/model_train_base.yaml"                 # Model config for the training
 

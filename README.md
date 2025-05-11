@@ -227,7 +227,7 @@ Here we describe the necessary steps that are required in order to be able to tr
 4. After the data has been uploaded, you will need to create the Azure Data Asset. See the [official Azure documentation]() how to do it.
 5. Then you will need to create an Azure compute instance. See this [official Azure documentation]() for precise instructions.
 6. Next, you will need to modify `/configs/azure_job.yaml` file, as we cannot provide defaults for certain variables:
-   - See the `dataset` top-level key. You need to input the name of the Data Asset and its version you created in Step 4.
+   - See the `dataset` top-level key. You need to input the `name` of the Data Asset and its `version` you created in Step 4.
    - See the `job` top-level key. You need to change the `job.compute` to have the name of the compute instance target you created in Step 5.
    - See the `jobs.args.wandb` key. You will need to input your Weights and Biases key, so the training and evaluation process can be monitored. See the [official guide]() how to get the key.
 7. _(Optional)_ If you wish, you can try to change the model parameters, you can do so in the `/configs/model_train_base.yaml` file, but this step is optional.
