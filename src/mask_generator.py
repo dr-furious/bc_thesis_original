@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from src.utils import load_json
 
 
+# The enum of available cv operations
 class MaskOperations(Enum):
     BLUR = "blur"
     ADAPTIVE_THRESHOLD = "adaptive_thresholding"
@@ -19,6 +20,7 @@ class MaskOperations(Enum):
     COMBINE_MASKS = "combine_masks"
 
 
+# Cuts a single cell roi from the image
 def _cut(image_path: str, regions: List[List[int]], out_dir: str | None = None) \
         -> List[Dict[str, Union[np.ndarray, int]]]:
     image = Image.open(image_path)
@@ -46,6 +48,8 @@ def _cut(image_path: str, regions: List[List[int]], out_dir: str | None = None) 
     return cut_roi_images
 
 
+# Checks if a bounding box lies partially out of the image.
+# If yes it modifies it so that it could be used without error
 def _check_bbox(roi: np.ndarray, bbox: Tuple[int, int, int, int], image_shape: Tuple[int, int]) \
         -> Tuple[int, int, int, int, np.ndarray]:
     x, y, w, h = bbox
@@ -77,12 +81,15 @@ class MaskGenerator:
         self.images_dir = images_dir
         self.json_file_path = json_file_path
 
+    # Sets the images from a provided images_dir directory
     def set_dir(self, images_dir: str) -> None:
         self.images_dir = images_dir
         self.image_data = []
 
+    # Cuts out single-cell rois according to the bounding box annotations
     def _cut_cells(self, json_path: str, out_dir: str | None = None) \
             -> List[Dict[str, Union[str, List[dict]]]]:
+        # Load the bounding box annotations
         data = load_json(json_path)
         images = data["images"]
         cut_results = []
@@ -93,6 +100,7 @@ class MaskGenerator:
             rois = [ann["bbox"] for ann in data["annotations"] if ann["image_id"] == image_id]
             if not os.path.exists(image_path):
                 continue
+            # Cut a single cell roi
             roi_images = _cut(image_path=image_path, regions=rois, out_dir=out_dir)
 
             # Save all cut rois per single image
@@ -103,6 +111,7 @@ class MaskGenerator:
         self.image_data = cut_results
         return self.image_data
 
+    # This function maps the Enum values from MaskOperations onto the actual functions that perform them
     def _get_operation_pipeline(self, operations: List[MaskOperations]) -> List[Callable[[bool], None]]:
         op_map = {
             MaskOperations.BLUR: self._blur,
@@ -115,16 +124,19 @@ class MaskGenerator:
         }
         return [op_map[op] for op in operations if op in op_map]
 
-    def _generate_masks(self, operations: List[Callable], save: bool) \
+    # Sequentially applies all operations from the provided list of operations in order to create pseudo-masks
+    def _generate_masks(self, operations: List[Callable]) \
             -> List[Dict[str, Union[str, List[dict]]]]:
         if operations is None:
             return self.image_data
         for operation in operations:
-            operation(save)
+            operation()
 
         return self.image_data
 
-    def _apply_operation_to_roi(self, operation: Callable, out_dir: str | None = None) -> None:
+    # Applies the operation to a roi
+    # Since all operations operate in the same loop, to avoid redundancy we use this helper function
+    def _apply_operation_to_roi(self, operation: Callable) -> None:
         for record in self.image_data:
             for cut in record["roi_cuts"]:
                 roi = cut["image"]
@@ -132,43 +144,43 @@ class MaskGenerator:
                 roi = operation(roi, roi_copy)
                 cut["image"] = roi
 
-    def _blur(self, save: bool) -> None:
+    def _blur(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             return cv2.medianBlur(roi, 3)
 
-        self._apply_operation_to_roi(do, "blur" if save else None)
+        self._apply_operation_to_roi(do)
 
-    def _otsu_thresholding(self, save: bool) -> None:
+    def _otsu_thresholding(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             img_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
             # Use Otsu's thresholding
             _, thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
             return thresh
 
-        self._apply_operation_to_roi(do, "otsu_threshold" if save else None)
+        self._apply_operation_to_roi(do)
 
-    def _adaptive_thresholding(self, save: bool) -> None:
+    def _adaptive_thresholding(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             img_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
             return cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
-        self._apply_operation_to_roi(do, "adaptive_threshold" if save else None)
+        self._apply_operation_to_roi(do)
 
-    def _morph_opening(self, save: bool) -> None:
+    def _morph_opening(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
             return cv2.morphologyEx(roi, cv2.MORPH_OPEN, kernel)
 
-        self._apply_operation_to_roi(do, "morph_opening" if save else None)
+        self._apply_operation_to_roi(do)
 
-    def _morph_closing(self, save: bool) -> None:
+    def _morph_closing(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
             return cv2.morphologyEx(roi, cv2.MORPH_CLOSE, kernel)
 
-        self._apply_operation_to_roi(do, "morph_closing" if save else None)
+        self._apply_operation_to_roi(do)
 
-    def _marked_watershed(self, save: bool) -> None:
+    def _marked_watershed(self) -> None:
         def do(roi: np.ndarray, roi_copy: np.ndarray) -> np.ndarray:
             dist_transform = cv2.distanceTransform(roi, cv2.DIST_L2, 5)
             _, sure_fg = cv2.threshold(dist_transform, 0.3 * dist_transform.max(), 255, 0)
@@ -184,9 +196,9 @@ class MaskGenerator:
             result_roi[markers > 1] = 255
             return result_roi
 
-        self._apply_operation_to_roi(do, "marked_watershed" if save else None)
+        self._apply_operation_to_roi(do)
 
-    def _combine_masks(self, save: bool) -> None:
+    def _combine_masks(self) -> None:
         for record in self.image_data:
             image_name, roi_cuts = record["image_name"], record["roi_cuts"]
             image_path = os.path.join(self.images_dir, image_name)
@@ -226,7 +238,7 @@ class MaskGenerator:
                 mask_path = os.path.join(colorized_dir, name)
                 cv2.imwrite(mask_path, fused_mask*10)
 
-    def run(self, out_dir: str, operations: List[MaskOperations], save_steps: bool = False,
+    def run(self, out_dir: str, operations: List[MaskOperations],
             visualize_range: Tuple[int, int] = (0, 50)) -> None:
         # Cutting
         self._cut_cells(self.json_file_path)
@@ -234,7 +246,7 @@ class MaskGenerator:
         # Applying CV operations
         operations_pipe = self._get_operation_pipeline(operations=operations)
 
-        self._generate_masks(operations=operations_pipe, save=save_steps)
+        self._generate_masks(operations=operations_pipe)
 
         for record in self.image_data:
             image_name, mask = record["image_name"], record["roi_cuts"][0]["image"]

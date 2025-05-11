@@ -18,6 +18,7 @@ class TILDataset(Dataset):
     def __len__(self):
         return len(self.image_ids)
 
+    # Outputs a tuple pair of (image, mask) used for training, validation, and testing
     def __getitem__(self, idx):
         image_id = self.image_ids[idx]
         image_path = os.path.join(self.images_dir, image_id)

@@ -14,7 +14,8 @@ import torchstain
 from src.utils import load_images
 
 
-def _compute_stride(dimension, patch_size):
+# Compute stride so the patches do not contain any black pixels that are outside the image
+def _compute_stride(dimension: int, patch_size: int) -> int:
     if dimension <= patch_size:
         return patch_size
     num_patches = math.ceil((dimension - patch_size) / patch_size) + 1
@@ -22,12 +23,15 @@ def _compute_stride(dimension, patch_size):
     return int(stride)
 
 
-def k_split(source_dir: str, out_dir: str, k: int = 3, images_dir="images", masks_dir="masks") -> None:
+# Splits the images and masks into k-folds, where the pattern is used to identify groups from image name
+def k_split(source_dir: str, out_dir: str, k: int = 3,
+            images_dir: str = "images", masks_dir: str = "masks", pattern=r"(\d+)_") \
+        -> None:
     image_dir = os.path.join(source_dir, images_dir)
     image_paths = sorted(
         [os.path.join(image_dir, img_name) for img_name in os.listdir(image_dir) if img_name.endswith('.png')])
 
-    case_ids = [re.match(r"(\d+)_", os.path.basename(path)).group(1) for path in image_paths]
+    case_ids = [re.match(pattern, os.path.basename(path)).group(1) for path in image_paths]
     groups = [int(pid) for pid in case_ids]
 
     gkf = GroupKFold(n_splits=k)
@@ -64,15 +68,18 @@ class ImageProcessor:
         self.images_dir = images_dir
         self.images = load_images(images_dir, supported_formats)
 
+    # Sets the images from the provided images_dir
     def set_images_from_dir(self, images_dir: str, supported_formats: Tuple[str] = (".jpg", ".jpeg", ".png")) -> None:
         self.images_dir = images_dir
         self.images = load_images(images_dir, supported_formats)
 
+    # Selects random images of size num
     def select_random_images(self, num: int = 10) -> List[Tuple[np.ndarray, str]]:
         if num > len(self.images):
             print("The number of images to select is greater than the total number of images.")
         return random.sample(self.images, num)
 
+    # Performs histogram equalization on the images
     def equalize_hist(self, inplace: bool = False,
                       out_dir: str | None = None) \
             -> List[Dict[str, Union[str, np.ndarray]]]:
@@ -99,6 +106,7 @@ class ImageProcessor:
             self.images = eq_images
         return result
 
+    # Normalizes the images and separates hematoxylin and eosin images from the original image
     def normalize(self, target_images: List[Tuple[np.ndarray, str]],
                   inplace: bool = False,
                   inplace_option: InplaceOption = InplaceOption.NORM,
@@ -140,6 +148,7 @@ class ImageProcessor:
             img = T(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             norm_img_tensor, hematoxylin, eosin = normalizer.normalize(I=img, stains=True)
 
+            # Pull the images into cpu and convert them to numpy array as values between 0 and 255 and as np.uint8 type
             norm_image = np.clip(norm_img_tensor.cpu().numpy(), 0, 255).astype(np.uint8)
             hematoxylin_img = np.clip(hematoxylin.cpu().numpy(), 0, 255).astype(np.uint8)
             eosin_img = np.clip(eosin.cpu().numpy(), 0, 255).astype(np.uint8)
@@ -172,8 +181,9 @@ class ImageProcessor:
             self.images = norm_images
         return result
 
-    def extract_patches(self, masks_dirs: List[str], out_dir: str, patch_size=128, pad=True,
-                        images_dir="images", masks_dir_name="masks") -> None:
+    # Extracts the patches from the image and all it's provided masks
+    def extract_patches(self, masks_dirs: List[str], out_dir: str, patch_size=128, pad: bool = True,
+                        images_dir: str = "images", masks_dir_name: str = "masks") -> None:
         for image in self.images:
             img, name = image
             name = os.path.splitext(os.path.basename(name))[0]
@@ -224,6 +234,8 @@ class ImageProcessor:
                     os.makedirs(os.path.dirname(mask_out_path), exist_ok=True)
                     cv2.imwrite(mask_out_path, mask_patch)
 
+    # Relabels a multi-label mask to binary mask.
+    # The target class is kept as the foreground class, rest are set to background
     def relabel_binary(self, masks_dir: str, out_dir: str, target_class: int) -> None:
         for image in self.images:
             img, name = image
@@ -235,8 +247,9 @@ class ImageProcessor:
 
             cv2.imwrite(os.path.join(out_dir, name), mask)
 
+    # Scales the image and all it's masks by a factor
     def scale(self, masks_dirs: List[str], out_dir: str, factor: float = 0.5, inplace: bool = False,
-              images_dir="images", masks_dir_name="masks") -> None:
+              images_dir: str = "images", masks_dir_name: str = "masks") -> None:
         for i, image in enumerate(self.images):
             img, name = image
             img_scaled = cv2.resize(img, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_CUBIC)

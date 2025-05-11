@@ -26,7 +26,7 @@ class SegModel(pl.LightningModule):
                 model_class = getattr(smp, model_name)
             except AttributeError:
                 raise ValueError(f"Model {model_name} is not available in segmentation_models_pytorch.")
-
+            # Create the model
             self.model = model_class(
                 encoder_name=encoder_name,
                 encoder_weights=encoder_weights,
@@ -36,6 +36,7 @@ class SegModel(pl.LightningModule):
         else:
             self.model = model_instance
 
+        # Set loss function of the model
         self.loss_fn = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
 
     def forward(self, x):
@@ -47,20 +48,17 @@ class SegModel(pl.LightningModule):
         logits = self(images)
         loss = self.loss_fn(logits, masks)
 
+        # Compute true postives, false positives, false negatives and true negatives, pixel-wise
         tp, fp, fn, tn = get_stats(logits, masks.long(), mode="binary", threshold=0.5)
 
+        # Compute evaluation metrics
         iou = iou_score(tp, fp, fn, tn, reduction="micro", zero_division=0.0)
         f1 = f1_score(tp, fp, fn, tn, reduction="micro", zero_division=0.0)
         acc = accuracy(tp, fp, fn, tn, reduction="micro", zero_division=0.0)
         pre = precision(tp, fp, fn, tn, reduction="micro", zero_division=0.0)
         rec = recall(tp, fp, fn, tn, reduction="micro", zero_division=0.0)
 
-        if stage == "val":
-            print("iou:", iou.item())
-            print("f1:", f1.item())
-            print("precision:", pre.item())
-            print("recall:", rec.item())
-
+        # Log all metrics to wandb via Logger
         self.log(f"{stage}/loss", loss, on_epoch=True)
         self.log(f"{stage}/iou", iou, on_epoch=True)
         self.log(f"{stage}/f1", f1, on_epoch=True)
@@ -91,15 +89,19 @@ class SegModel(pl.LightningModule):
         probs = torch.sigmoid(logits)
         preds = (probs > 0.5).float()
 
+        # Pull image, mask, and preds to cpu and convert them to numpy arrays
         images = images.cpu().numpy()
         masks = masks.cpu().numpy()
         preds = preds.cpu().numpy()
 
-        num_images = min(6, images.shape[0])  # Log max 6 images (for wandb performance)
+        # Log max 6 images (for wandb performance)
+        num_images = min(6, images.shape[0])
         logged_images = []
         for i in range(num_images):
-            img = images[i].transpose(1, 2, 0)  # Convert from CHW to HWC
-            mask = masks[i][0]  # Masks with shape (B, 1, H, W)
+            # Convert from CHW to HWC
+            img = images[i].transpose(1, 2, 0)
+            # Masks with shape (B, 1, H, W)
+            mask = masks[i][0]
             pred = preds[i][0]
 
             # Convert to uint8
