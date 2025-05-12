@@ -9,6 +9,7 @@ pillow>=11.2.1
 torchstain>=1.4.1
 scikit-learn>=1.6.1
 torchvision>=0.21.0
+pytorch-lightning>=2.5
 jupyter
 azure-ai-ml
 azure-identity
