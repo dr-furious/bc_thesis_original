@@ -11,7 +11,7 @@
 
 ## Table of contents
   * [Project's folder structure](#projects-folder-structure)
-  * [Descriptions of folders and files](#descriptions-of-folders-and-files)
+  * [Description of folders and files](#description-of-folders-and-files)
     + [`root` directory files](#root-directory-files)
     + [`config` directory files](#config-directory-files)
     + [`data` and `example_data` directories](#data-and-example_data-directories)
@@ -81,16 +81,16 @@
 └── requirements.txt
 ```
 
-## Descriptions of folders and files
+## Description of folders and files
 ### `root` directory files
 **.amlignore**\
-Here is a list of folders and files that are ignored when a job is submitted to the Azure ML platform. When a job is submitted, Azure takes a snapshot of the directory it is give as the source directory. The files listed in `.amlignore` will be ignored by this operation.
+Here is a list of folders and files that are ignored when a job is submitted to the Azure ML platform. When a job is submitted, Azure takes a snapshot of the directory it is given as the source directory. The files listed in `.amlignore` will be ignored by this operation.
 
 **.gitignore**\
 Files to be ignored by the Git versioning system.
 
 **main.ipynb**\
-In this Jupyter notebook, the whole preprocessing, pseudo-mask generating, and pseudo-mask fusing pipeline can be run. It also provides the visualizations of preprocessed images and pseudo-masks. By default, this notebook is run, so you can also see the outputs of each cell. Open the [main.ipynb](./main.ipynb) to see it.
+In this Jupyter notebook, the whole preprocessing, pseudo-mask generating, and pseudo-mask fusing pipeline can be run. It also provides the visualizations of preprocessed images and pseudo-masks. This notebook has already been executed, so you can also see the outputs of each cell. Open the [main.ipynb](./main.ipynb) to see it.
 
 **main.py**\
 This is the main training and evaluation script. It can be run both locally and on the Azure ML platform. See the [Demo](#how-to-run-the-demo) section to see both possible options.
@@ -110,13 +110,13 @@ Contains the information required to authenticate and connect to your Azure ML W
 Contains all configuration values that are used to submit the job run, which will train the model. These include the data asset information, the environment information (environment where the job will run), the job information (like source directory to push to Azure ML, compute target, etc.) and the arguments to be passed to the `main.py` function once it is executed.
 
 **azure_upload_data.yaml**\
-Here are the information about the folder you want to upload to the Azure storage, the destination folder on Azure ML and options to overwrite already existing files and see the progress of the whole process.
+Here is the information about the folder you want to upload to the Azure storage, the destination folder on Azure ML and options to overwrite already existing files and see the progress of the whole process.
 
 **model_train_base.yaml**\
 Contains the hyperparameters that are used by the model during the training and evaluation. It also contains the option to load the pre-trained model.
 
 **paths.yaml**\
-This file contains all paths, or parts of paths where the images are being stored, created, modified and updated, and from which are loaded during the preprocessing. The whole folder structure for the preprocessing and pseudo-mask creation is created in the [main.ipynb](./main.ipynb) notebook, here also the full paths are build. Note that by default, all file manipulations are performed under the `/example_data/` directory (unless changed in this config). For the [Demo](#how-to-run-the-demo), we recommend keeping this config file as is. For the real preprocessing, we advise to change the `root_data_dir` value to point to the `/data` directory.
+This file contains all paths, or parts of paths where the images are being stored, created, modified and updated, and from which are loaded during the preprocessing. The whole folder structure for the preprocessing and pseudo-mask creation is created in the [main.ipynb](./main.ipynb) notebook, here also the full paths are built. Note that by default, all file manipulations are performed under the `/example_data/` directory (unless changed in this config). For the [Demo](#how-to-run-the-demo), we recommend keeping this config file as is. For the real preprocessing, we advise to change the `root_data_dir` value to point to the `/data` directory.
 
 ### `data` and `example_data` directories
 The `data` directory contains four main subdirectories. Here the images and annotations of the respective datasets reside ([TIGER](https://tiger.grand-challenge.org/Data/) and [TNBC](https://zenodo.org/records/3552674) datasets). The `/data/raw_*` folders contain the raw images and annotations (bounding box for TIGER - in the [COCO JSON](https://roboflow.com/formats/coco-json) format, PNG masks for TNBC). The `/data/preprocessed_*` directories contain more subdirectories that are created during the run of the [main.ipynb](./main.ipynb) notebook. The most important ones are:
@@ -130,7 +130,7 @@ Note that this directory is meant to be used for real preprocessing, and you nee
 The `/example_data` directory follows the exact same structure, but already contains 10 example images from the TIGER dataset in the `/data/raw_tiger/images` subdirectory,  the `tiger-coco.json` file with the TIGER bounding box annotations in the  `/data/raw_tiger` subdirectory, and 4 images from the TNBC dataset in the `/data/raw_tnbc/images` subdirectory and their corresponding masks in the `/data/raw_tnbc/masks` subdirectory. This directory is by default listed as the `root_data_dir` in the `/configs/path.yaml` file, so in order to run the [Demo](#how-to-run-the-demo) you do not need to change anything in the `/configs/path.yaml` file.
 
 ### `models` directory
-Here the models that you wish to save and use for future fine-tuning or reference should be place. We do not include any pre-trained model here, since the `.ckpt` files are around 300MB in size.
+Here the models that you wish to save and use for future fine-tuning or reference should be placed. We do not include any pre-trained model here, since the `.ckpt` files are around 300MB in size.
 
 ### `src/azure` directory
 **azure_conda.yaml**\
@@ -199,7 +199,7 @@ source .venv/bin/activate
 or Windows (from PowerShell):
 
 ```shell
-python -m venv .venv
+python -m venv .venv 
 .\.venv\Scripts\Activate.ps1 
 ```
 
@@ -215,7 +215,7 @@ Here we present a way how to run the demo version (using the demo data placed in
 ### 1. Preprocessing and pseudo-mask creation
 1. Navigate into the [main.ipynb](./main.ipynb) Jupyter notebook. You will notice that the notebook is already run (for the demonstration). Feel free to examine it before trying to run anything. 
 2. Next, make sure that you clear all outputs (to avoid any confusion) and start running it cell after cell (or all at once). You will notice that under the `/example_data/processed_*` directories, different subdirectories will appear. Those will be populated with different images or versions of images and masks during the preprocessing and pseudo-mask creation. During the execution of the cells, you will also see the textual and visual output responses. 
-3. After the whole notebook is run, feel free to examine the different subdirectories that were created - but be careful not to delete, move, or rename any of them or their contents.
+3. After the whole notebook is executed, feel free to examine the different subdirectories that were created - but be careful not to delete, move, or rename any of them or their contents.
 4. The data is now prepared for the training. 
 
 ### 2.A Training on Azure
@@ -229,19 +229,19 @@ Here we describe the necessary steps that are required in order to be able to tr
 6. Next, you will need to modify `/configs/azure_job.yaml` file, as we cannot provide defaults for certain variables:
    - See the `dataset` top-level key. You need to input the `name` of the Data Asset and its `version` you created in Step 4.
    - See the `job` top-level key. You need to change the `job.compute` to have the name of the compute instance target you created in Step 5.
-   - See the `jobs.args.wandb` key. You will need to input your Weights and Biases key, so the training and evaluation process can be monitored. See the [official guide](https://docs.wandb.ai/support/find_api_key/) how to get the key.
-7. _(Optional)_ If you wish, you can try to change the model parameters, you can do so in the `/configs/model_train_base.yaml` file, but this step is optional.
+   - See the `jobs.args.wandb` key. You will need to input your Weights and Biases key, so the training and evaluation process can be monitored. See the [official guide](https://docs.wandb.ai/support/find_api_key/) on how to get the key.
+7. _(Optional)_ If you wish, you can try to change the model parameters in the `/configs/model_train_base.yaml` file, but this step is optional.
 8. Now navigate into the [azure_train.ipynb](./src/azure/azure_train.ipynb) and follow the instructions within it to submit the training and evaluation job to the Azure ML platform.
 9. During the training you can see and monitor the whole process in your Weights and Biases account.
-10. After the training and evaluation is done, look for the `outputs` folder in the job details on the Azure ML platform. It should be in the _Outputs + logs_ tab, but the Azure ML platform UI changes constantly.
+10. After the training and evaluation are done, look for the `outputs` folder in the job details on the Azure ML platform. It should be in the _Outputs + logs_ tab, but the Azure ML platform UI changes constantly.
 11. You can download the trained model from the `outputs/checkpoints/best.ckpt`. Be aware that the checkpoint file has around 300MB in size. 
 
 ### 2.B Training locally
-This options presents a way how to run the training and evaluation locally. Note that the Demo will work just fine, since there is only a fraction of the size of real dataset, but when training with a large dataset, the time to train the model locally can be significantly longer.
+This option presents a way how to run the training and evaluation locally. Note that the Demo will work just fine, since there is only a fraction of the size of real dataset, but when training with a large dataset, the time to train the model locally can be significantly longer.
 
 Follow these steps:
-1. _(Optional)_ If you wish, you can try to change the model parameters, you can do so in the `/configs/model_train_base.yaml` file, but this step is optional.
-2. Run the `main.py` script. Be sure to input your correct Weights and Biases key. See the [official guide](https://docs.wandb.ai/support/find_api_key/) how to get the key.
+1. _(Optional)_ If you wish, you can try to change the model parameters in the `/configs/model_train_base.yaml` file, but this step is optional.
+2. Run the `main.py` script. Be sure to input your correct Weights and Biases key. See the [official guide](https://docs.wandb.ai/support/find_api_key/) on how to get the key.
     ```bash
     python3 main.py --data_path './example_data' --wandb '<your-wandb-key>' --train_images_path 'processed_tiger/patches/images' --train_masks_path 'processed_tiger/patches/masks/fused_leave_1_out' --test_images_path 'processed_tnbc/patches/images' --test_masks_path 'processed_tnbc/patches/masks'
     ```
@@ -249,4 +249,4 @@ Follow these steps:
 4. Once the training finished, you will notice that a new `/outputs` directory was created. This contains both the trained model in the `/outputs/checkpoints/best.ckpt` file and the raw Weights and Biases logs in the `outputs/wandb` folder. Furthermore, it contains a `outputs/test_results.json` with the evaluation metrics from the evaluation phase.
    
 ### 3. Inference
-In case you wish to see how the model during the inference, navigate into the [inference.ipynb](./src/models/inference.ipynb). Notice that this notebook is run as well, feel free to examine it and then clear the outputs (to avoid any confusion). You **will need to** input the path to the trained model `.ckpt` file, as we do **not** provide a trained model in the demo. Run the notebook and see the results!
+If you wish to see how the model works during inference, navigate to the [inference.ipynb](./src/models/inference.ipynb). Notice that this notebook has already been executed as well; feel free to examine it and then clear the outputs (to avoid any confusion). You **will need to** input the path to the trained model `.ckpt` file, as we do **not** provide a trained model in the demo. Run the notebook and see the results!
