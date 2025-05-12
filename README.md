@@ -210,7 +210,7 @@ pip install -r requirements.txt
 ```
 
 ## How to run the Demo
-Here we present a way how to run the demo version (using the demo data placed in the `/example_data` folder). Be aware of the fact, that since we only have 10 training images and 4 testing images in this demo, the model performance will be poor. This is just to showcase how the project works. To download full datasets, visit the [Grand Challenge - TIGER](https://tiger.grand-challenge.org/Data/) challenge for the TIGER dataset and the [Zenodo - TNBC](https://zenodo.org/records/3552674) for the TNBC datasets. Also note that our project works with the PNG images only.
+Here we present a way how to run the demo version (using the demo data placed in the `/example_data` folder). Be aware of the fact, that since we only have 10 training images and 4 testing images in this demo, the model performance will not be representative of real‐world results. This is just to showcase how the project works. To download full datasets, visit the [Grand Challenge - TIGER](https://tiger.grand-challenge.org/Data/) challenge for the TIGER dataset and the [Zenodo - TNBC](https://zenodo.org/records/3552674) for the TNBC datasets. Also note that our project works with the PNG images only.
 
 ### 1. Preprocessing and pseudo-mask creation
 1. Navigate into the [main.ipynb](./main.ipynb) Jupyter notebook. You will notice that the notebook is already run (for the demonstration). Feel free to examine it before trying to run anything. 
